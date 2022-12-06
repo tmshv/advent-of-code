@@ -32,7 +32,7 @@ fn main() -> io::Result<()> {
 
     elfes.sort_by(|a, b| b.cmp(a));
     let total = elfes[0] + elfes[1] + elfes[2];
-    println!("Toal value is {}", total);
+    println!("Total value is {}", total);
 
     Ok(())
 }
