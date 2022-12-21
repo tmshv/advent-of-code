@@ -143,10 +143,36 @@ fn read_input() -> Vec<Command> {
     items
 }
 
+fn calculate_folder_size(root: &Tree<Vec<File>>, id: NodeId) -> u32 {
+    let mut total = 0;
+    let node = &root.nodes[id.index];
+    for f in &node.children {
+        let folder_size = calculate_folder_size(root, *f);
+        total += folder_size;
+    }
+    for f in &node.payload {
+        total += f.size;
+    }
+    total
+}
+
+fn solve_task(root: &Tree<Vec<File>>) {
+    let mut total = 0;
+    for f in &root.nodes[1..] {
+        let size = calculate_folder_size(root, f.id);
+        if size < 100000 {
+            total += size;
+        }
+    }
+    println!("Result: {}", total);
+}
+
 fn flat_fs(root: &Tree<Vec<File>>, id: NodeId, padding: usize) -> Vec<(String, u32, usize)> {
     let mut nodes: Vec<(String, u32, usize)> = vec![];
     let node = &root.nodes[id.index];
-    nodes.push((node.name.clone(), 0, padding));
+
+    let folder_size = calculate_folder_size(root, id);
+    nodes.push((node.name.clone(), folder_size, padding));
 
     for f in &node.children {
         let next_nodes = flat_fs(root, *f, padding + 1);
@@ -164,8 +190,8 @@ fn print_fs(tree: &Tree<Vec<File>>) {
     let items = flat_fs(tree, NodeId { index: 0 }, 0);
     for (name, size, padding) in items {
         if size > 0 {
-            println!("{} - {} ({})", " ".repeat(padding), name, size);
-        }else{
+            println!("{} - {} (size={})", " ".repeat(padding), name, size);
+        } else {
             println!("{} - {}", " ".repeat(padding), name);
         }
     }
@@ -210,13 +236,13 @@ fn main() {
                     let size = dir_or_size.parse::<u32>().unwrap();
                     let folder = tree.get_current_mut();
                     match folder {
-                        None => {},
+                        None => {}
                         Some(node) => {
-                            node.payload.push(File{
+                            node.payload.push(File {
                                 name: file_name,
                                 size,
                             });
-                        },
+                        }
                     }
                 }
             }
@@ -224,4 +250,5 @@ fn main() {
     }
 
     print_fs(&tree);
+    solve_task(&tree);
 }
