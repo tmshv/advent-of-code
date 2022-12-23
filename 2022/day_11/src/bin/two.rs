@@ -151,7 +151,7 @@ fn read_input() -> Vec<Monkey> {
     monkeys
 }
 
-fn run_round(mut monkeys: Vec<Monkey>, lcd: i64) -> Vec<Monkey> {
+fn run_round(monkeys: &mut Vec<Monkey>, lcd: i64) -> &mut Vec<Monkey> {
     for i in 0..monkeys.len() {
         let mut drops: Vec<(usize, Item)> = vec![];
         let monkey = &mut monkeys[i];
@@ -185,18 +185,11 @@ fn run_round(mut monkeys: Vec<Monkey>, lcd: i64) -> Vec<Monkey> {
 }
 
 fn main() {
-    let mut monkeys = read_input();
+    let mut monkeys = &mut read_input();
     let lcd: i64 = monkeys.iter().map(|m| m.test_value).product();
 
     for _ in 0..10000 {
         monkeys = run_round(monkeys, lcd);
-    }
-
-    for m in &monkeys {
-        println!(
-            "Monkey {} inspected items {} times",
-            m.id, m.inspected_items
-        );
     }
 
     monkeys.sort_by_key(|m| m.inspected_items * -1);
