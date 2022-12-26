@@ -1,4 +1,8 @@
-use std::{fmt::Debug, io, cmp::{Ord, PartialOrd, Ordering}};
+use std::{
+    cmp::{Ord, Ordering, PartialOrd},
+    fmt::Debug,
+    io,
+};
 
 #[derive(Debug, PartialEq, Eq)]
 enum Item {
@@ -13,11 +17,11 @@ impl Ord for Item {
             (Item::Integer(value), _) => {
                 let list = Item::List(vec![Item::Integer(*value)]);
                 list.cmp(other)
-            },
+            }
             (_, Item::Integer(value)) => {
                 let list = Item::List(vec![Item::Integer(*value)]);
                 self.cmp(&list)
-            },
+            }
             (Item::List(left_items), Item::List(right_items)) => {
                 let mut a = left_items.iter();
                 let mut b = right_items.iter();
@@ -132,6 +136,7 @@ fn read_input() -> Vec<Pair> {
                     let left = parse_row(buffer[0].as_str());
                     let right = parse_row(buffer[1].as_str());
                     result.push(Pair { left, right });
+                    buffer.clear();
                 } else {
                     buffer.push(value);
                 }
@@ -143,8 +148,6 @@ fn read_input() -> Vec<Pair> {
 
 fn main() {
     let pairs = read_input();
-    // let x = parse_row("[[],1,[2,3,4],5]");
-
     let mut count = 0;
     for (i, pair) in pairs.iter().enumerate() {
         if pair.compare() {
@@ -250,5 +253,26 @@ mod tests {
         };
         let result = pair.compare();
         assert_eq!(result, false);
+    }
+
+    #[test]
+    fn pair_compare_right_complex() {
+        // [[4,4],4,4]
+        // [[4,4],4,4,4]
+        let pair = Pair {
+            left: Item::List(vec![
+                Item::List(vec![Item::Integer(4), Item::Integer(4)]),
+                Item::Integer(4),
+                Item::Integer(4),
+            ]),
+            right: Item::List(vec![
+                Item::List(vec![Item::Integer(4), Item::Integer(4)]),
+                Item::Integer(4),
+                Item::Integer(4),
+                Item::Integer(4),
+            ]),
+        };
+        let result = pair.compare();
+        assert_eq!(result, true);
     }
 }

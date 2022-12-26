@@ -123,4 +123,4 @@ Determine which pairs of packets are already in the right order. What is the sum
 cat input.txt | cargo run --release --bin one
 ```
 
-Result: `480`
+Result: `5503`
