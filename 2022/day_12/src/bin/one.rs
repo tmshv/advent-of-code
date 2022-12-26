@@ -384,7 +384,7 @@ fn main() {
             let neighbors = landscape.get_adjacent(&loc_a);
             for loc_b in neighbors {
                 let cost = landscape.elevation_at_step(&loc_a, &loc_b);
-                edges.push((loc_a, loc_b, cost));
+                edges.push((loc_a, loc_b, cost + 1));
             }
         }
     }
