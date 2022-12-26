@@ -1,4 +1,4 @@
-use std::{collections::HashMap, hash::Hash, io};
+use std::{collections::HashMap, fmt::Debug, hash::Hash, io};
 
 const A: u32 = 'a' as u32;
 const Z: u32 = 'z' as u32;
@@ -18,14 +18,13 @@ impl<K, T> Node<K, T> {
 #[derive(Debug)]
 struct Graph<K, P>
 where
-    K: Eq + Hash,
+    K: Eq + Hash + Debug,
 {
-    // nodes: Vec<Node<T>>,
     nodes: HashMap<K, Node<K, P>>,
     edges: HashMap<K, Vec<(K, u32)>>,
 }
 
-impl<K: Eq + Hash + Copy, P> Graph<K, P> {
+impl<K: Eq + Hash + Copy + Debug, P> Graph<K, P> {
     fn new() -> Graph<K, P> {
         Graph {
             nodes: HashMap::new(),
@@ -53,66 +52,103 @@ impl<K: Eq + Hash + Copy, P> Graph<K, P> {
         v.push((b, weight));
     }
 
-    fn dijekstra(&self, start: &K, end: &K) -> Option<Route> {
+    fn dijekstra(&self, start: &K, end: &K) -> Option<Vec<K>> {
         let mut visited = HashMap::new();
         let mut costs = HashMap::new();
-        let mut parent = HashMap::new();
 
-        // let mut visits = HashMap::new();
-        // let mut result = Route::new(start);
-        // let mut variants = vec![result.clone()];
-        // env.visit(&start);
-
-        let mut min = 1_000_000_000u32;
+        // 1. mark all nodes as unvisited
+        for (id, _) in &self.nodes {
+            visited.insert(id, false);
+        }
 
         let mut current = start;
-        costs.insert(current, 0u32);
+        costs.insert(current, (0u32, current));
 
+        // for _ in 0..2000 {
         loop {
+            let (current_cost, _) = *costs.get(current).unwrap();
             let mut next = current;
-            let edges = self.edges.get(current).unwrap();
-            for (other, cost) in edges {
-                parent.insert(other, current);
-                costs.insert(other, *cost);
+            let edges = self.edges.get(current);
+            match edges {
+                None => {
+                    break;
+                }
+                Some(edges) => {
+                    let mut min = 1_000_000_000u32;
+                    println!("Inspecting {} edges", edges.len());
+                    for (other, edge_cost) in edges {
+                        // check maybe other is visited
+                        if *visited.get(other).unwrap() {
+                            continue;
+                        }
 
-                if *cost < min {
-                    min = *cost;
-                    next = other;
+                        let mut cost = current_cost + *edge_cost;
+
+                        println!("Inspect edge {:?} -> {:?} ({})", current, other, cost);
+
+                        if costs.contains_key(other) {
+                            let (old_cost, _) = *costs.get(other).unwrap();
+                            if cost < old_cost {
+                                costs.insert(other, (cost, current));
+                            } else {
+                                cost = old_cost;
+                            }
+                        } else {
+                            costs.insert(other, (cost, current));
+                        }
+
+                        if cost < min {
+                            println!("New next node is {:?}", other);
+                            min = cost;
+                            next = other;
+                        }
+                    }
+
+                    visited.insert(current, true);
+
+                    if current == next {
+                        println!("Stuck at {:?}. Check others", next);
+
+                        let mut others_to_check = vec![];
+                        for (id, (cost, parent)) in &costs {
+                            if !*visited.get(id).unwrap() {
+                                others_to_check.push((cost, parent));
+                            }
+                        }
+
+                        if others_to_check.len() > 0 {
+                            others_to_check.sort_by_key(|x| x.0);
+                            current = others_to_check[0].1;
+                        } else {
+                            break;
+                        }
+                    } else {
+                        current = next;
+                    }
                 }
             }
-
-            visited.insert(current, true);
-
-            current = next;
+            if current == end {
+                break;
+            }
         }
-        // while variants.len() > 0 {
-        //     // let cs: Vec<u32> = variants.iter().map(|r| r.cost()).collect();
-        //     // println!("current costs {:?}", cs);
-        //     println!("current buf {:?}", variants.len());
-        //     let route = variants.pop().unwrap();
-        //     // let route = variants.remove(0);
-        //     // if route.cost < result.cost {
-        //     // println!("found new best with cost{:?}", variants.len());
-        //     // result = Some(route.clone());
-        //     result = route.clone();
-        //     // println!("found new best with cost {:?}", result.costs);
-        //     // }
-        //     if route.is_reached(&end) {
-        //         println!("Reach!");
-        //         break;
-        //     } else {
-        //         let current_position = route.current().unwrap();
-        //         let next_steps = env.next_possible_steps(current_position);
-        //         for (cost, step) in next_steps {
-        //             let mut new_route = route.clone();
-        //             new_route.move_to_with_cost(cost, step);
-        //             variants.push(new_route);
-        //         }
-        //         env.visit(current_position);
-        //     }
-        //     variants.sort_by_key(|route| 100000000 - route.cost());
-        // }
-        // Some(result)
+
+        if current == end {
+            let mut cursor = current;
+            let mut route = vec![*cursor];
+            loop {
+                let (_, parent) = costs.get(cursor).unwrap();
+                route.push(**parent);
+                cursor = parent;
+                if cursor == start {
+                    break;
+                }
+            }
+            route.reverse();
+
+            return Some(route);
+        }
+
+        println!("Djekstra end. Final node is {:?}", current);
         None
     }
 }
@@ -154,7 +190,11 @@ impl Env {
     // end is at the same elevation or +1 step (-1 is not available)
     fn is_reachable(&self, start: &Location, end: &Location) -> bool {
         let slope = self.elevation_at_step(start, end);
-        // let slope = (e.elevation as i32 - s.elevation as i32).abs();
+        // elevation of destination cell can be much lower than current cell
+        if slope < 0 {
+            return true;
+        }
+        // or at most one higher than current
         return slope == 0 || slope == 1;
     }
 
@@ -231,6 +271,7 @@ impl Env {
             match step {
                 None => {}
                 Some(next) => {
+                    // result.push(next);
                     if self.is_reachable(loc, &next) {
                         result.push(next);
                     }
@@ -286,10 +327,6 @@ impl Location {
         (self.x, self.y)
     }
 
-    fn equal(&self, other: &Location) -> bool {
-        self.x == other.x && self.y == other.y
-    }
-
     fn get_direction_to(&self, other: &Location) -> Direction {
         if self.x == other.x && self.y == other.y {
             return Direction::Cover;
@@ -315,50 +352,17 @@ impl Location {
     }
 }
 
-#[derive(Debug, Clone)]
-struct Route {
-    steps: Vec<Location>,
-    costs: Vec<u32>,
-}
-
-impl Route {
-    fn new(start: Location) -> Route {
-        Route {
-            steps: vec![start],
-            costs: vec![0],
-        }
+fn route_to_directions(route: &Vec<Location>) -> Vec<Direction> {
+    let init = route.len() - 1;
+    let mut result = vec![];
+    for s in 0..init {
+        let e = s + 1;
+        let start = route[s];
+        let end = route[e];
+        let d = start.get_direction_to(&end);
+        result.push(d);
     }
-
-    fn cost(&self) -> u32 {
-        self.costs.iter().sum()
-    }
-
-    fn move_to_with_cost(&mut self, cost: u32, loc: Location) {
-        self.steps.push(loc);
-        self.costs.push(cost);
-    }
-
-    fn is_reached(&self, loc: &Location) -> bool {
-        let last = self.current().unwrap();
-        last.equal(loc)
-    }
-
-    fn current(&self) -> Option<&Location> {
-        self.steps.last()
-    }
-
-    fn to_directions(&self) -> Vec<Direction> {
-        let init = self.steps.len() - 1;
-        let mut result = vec![];
-        for s in 0..init {
-            let e = s + 1;
-            let start = self.steps[s];
-            let end = self.steps[e];
-            let d = start.get_direction_to(&end);
-            result.push(d);
-        }
-        result
-    }
+    result
 }
 
 fn read_input() -> (Location, Location, Env) {
@@ -394,11 +398,11 @@ fn read_input() -> (Location, Location, Env) {
     (start, end, env)
 }
 
-fn print_route(end: &Location, env: &Env, route: &Route) {
+fn print_route(end: &Location, env: &Env, route: &Vec<Location>) {
     let mut hash = HashMap::new();
-    let directions = route.to_directions();
+    let directions = route_to_directions(route);
     for (i, dir) in directions.iter().enumerate() {
-        let loc = &route.steps[i];
+        let loc = &route[i];
         let c = match dir {
             Direction::Cover => '*',
             Direction::Left => '<',
@@ -428,31 +432,48 @@ fn print_route(end: &Location, env: &Env, route: &Route) {
 }
 
 fn main() {
-    let (start, end, mut env) = read_input();
+    let (start, end, env) = read_input();
 
     println!("start={:?}", start);
     println!("end={:?}", end);
 
-    // let route = dijekstra(start, end, &mut env);
-    // match route {
-    //     None => {
-    //         println!("Unreachable!");
-    //     }
-    //     Some(route) => {
-    //         println!(
-    //             "Route steps {} with cost {}",
-    //             route.steps.len() - 1,
-    //             route.cost()
-    //         );
-    //         print_route(&end, &env, &route);
-    //     }
-    // }
+    // Build graph
+    let mut graph = Graph::<Location, u32>::new();
+    let (w, h) = env.shape();
+    let mut edges = vec![];
+    for y in 0..h {
+        for x in 0..w {
+            let loc = Location { x, y };
+            let elevation = env.elevation_at(&loc);
+            graph.add_node(loc, elevation);
+            let neighbors = env.get_adjacent(&loc);
+            for loc_b in neighbors {
+                edges.push((loc, loc_b));
+            }
+        }
+    }
+    for (a, b) in edges {
+        let elevation = env.elevation_at(&a);
+        graph.add_edge(a, b, elevation);
+    }
+    // println!("{:?}", graph);
+
+    let route = graph.dijekstra(&start, &end);
+    match route {
+        None => {
+            println!("Unreachable!");
+        }
+        Some(route) => {
+            println!("Route steps {}", route.len() - 1);
+            print_route(&end, &env, &route);
+        }
+    }
 
     // println!("Visit map:");
     // let (w, h) = env.shape();
     // for y in 0..h {
     //     for x in 0..w {
-    //         let elevation = env.elevation_at_step(&start, &end)
+    //         let elevation = env.elevation_at_step(&start, &end);
     //         let mut marker = if env.is_unvisited(&Location { x, y }) {
     //             '.'
     //         } else {
@@ -465,67 +486,73 @@ fn main() {
     //     }
     //     println!("");
     // }
+}
 
-    let mut graph = Graph::<Location, u32>::new();
-    let (w, h) = env.shape();
-    let mut edges = vec![];
-    for y in 0..h {
-        for x in 0..w {
-            let loc = Location { x, y };
-            // let elevation = env.elevation_at(&loc);
-            let siblings = env.get_adjacent(&loc);
+#[cfg(test)]
+mod tests {
+    use crate::Graph;
 
-            for s in siblings {
-                edges.push((loc, s));
-            }
-
-            // let node = graph.add_node(loc, elevation);
-            // match node {
-            //     None => {
-            //         panic!("Failed to add node");
-            //     }
-            //     Some(node) => {
-            //         // let node = graph.add_node(loc, elevation);
-            //     }
-            // }
-        }
+    #[test]
+    fn graph_path_finding_works() {
+        let mut graph = Graph::<&str, u32>::new();
+        graph.add_node("A", 0);
+        graph.add_node("B", 0);
+        graph.add_node("C", 0);
+        graph.add_node("D", 0);
+        graph.add_node("E", 0);
+        graph.add_node("F", 0);
+        graph.add_edge("A", "B", 2);
+        graph.add_edge("A", "D", 8);
+        graph.add_edge("B", "D", 5);
+        graph.add_edge("B", "E", 6);
+        graph.add_edge("D", "E", 3);
+        graph.add_edge("D", "F", 2);
+        graph.add_edge("E", "F", 1);
+        graph.add_edge("E", "C", 9);
+        graph.add_edge("F", "C", 3);
+        let route = graph.dijekstra(&"A", &"C");
+        assert_eq!(route, Some(vec!["A", "B", "D", "F", "C"]));
     }
 
-    for y in 0..h {
-        for x in 0..w {
-            let loc = Location { x, y };
-            let elevation = env.elevation_at(&loc);
-            graph.add_node(loc, elevation);
-            let siblings = env.get_adjacent(&loc);
-            for loc_b in siblings {
-                // let a = graph.get_node(&loc_a);
-                // let b = graph.get_node(&loc_b);
-                // match a.zip(b) {
-                //     Some((a, b)) => {
-                edges.push((loc, loc_b));
-                //     }
-                //     None => {
-                //         panic!("Fail");
-                //     }
-                // }
-            }
-        }
+    #[test]
+    fn graph_path_finding_works_when_end_is_not_the_last_node() {
+        let mut graph = Graph::<&str, u32>::new();
+        graph.add_node("A", 0);
+        graph.add_node("B", 0);
+        graph.add_node("C", 0);
+        graph.add_node("D", 0);
+        graph.add_node("E", 0);
+        graph.add_node("F", 0);
+        graph.add_edge("A", "B", 2);
+        graph.add_edge("A", "D", 8);
+        graph.add_edge("B", "D", 5);
+        graph.add_edge("B", "E", 6);
+        graph.add_edge("D", "E", 3);
+        graph.add_edge("D", "F", 2);
+        graph.add_edge("E", "F", 1);
+        graph.add_edge("E", "C", 9);
+        graph.add_edge("F", "C", 3);
+        let route = graph.dijekstra(&"A", &"E");
+        assert_eq!(route, Some(vec!["A", "B", "E"]));
     }
 
-    for (a, b) in edges {
-        let elevation = env.elevation_at(&a);
-        // let node_a = graph.add_node(a, elevation);
-        // let node_b = graph.add_node(b, elevation);
-        graph.add_edge(a, b, elevation);
-        // match node_a {
-        //     None => {
-        //         panic!("Failed to add node");
-        //     }
-        //     Some(node) => {
-        //         // let node = graph.add_node(loc, elevation);
-        //     }
-        // }
+    #[test]
+    fn graph_path_finding_works_when_end_is_not_reachable() {
+        let mut graph = Graph::<&str, u32>::new();
+        graph.add_node("A", 0);
+        graph.add_node("B", 0);
+        graph.add_node("C", 0);
+        graph.add_node("D", 0);
+        graph.add_node("E", 0);
+        graph.add_node("F", 0);
+        graph.add_edge("A", "B", 2);
+        graph.add_edge("A", "D", 8);
+        graph.add_edge("B", "D", 5);
+        graph.add_edge("B", "E", 6);
+        graph.add_edge("D", "E", 3);
+        graph.add_edge("D", "F", 2);
+        graph.add_edge("E", "F", 1);
+        let route = graph.dijekstra(&"A", &"C");
+        assert_eq!(route, None);
     }
-
-    println!("{:?}", graph);
 }
