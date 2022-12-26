@@ -18,10 +18,10 @@ impl<K, T> Node<K, T> {
 #[derive(Debug)]
 struct Graph<K, P>
 where
-    K: Eq + Hash + Debug,
+    K: Eq + Hash + Copy + Debug,
 {
     nodes: HashMap<K, Node<K, P>>,
-    edges: HashMap<K, Vec<(K, u32)>>,
+    edges: HashMap<K, Vec<(K, i32)>>,
 }
 
 impl<K: Eq + Hash + Copy + Debug, P> Graph<K, P> {
@@ -44,7 +44,7 @@ impl<K: Eq + Hash + Copy + Debug, P> Graph<K, P> {
         self.nodes.get(id)
     }
 
-    fn add_edge(&mut self, a: K, b: K, weight: u32) {
+    fn add_edge(&mut self, a: K, b: K, weight: i32) {
         if !self.edges.contains_key(&a) {
             self.edges.insert(a, vec![]);
         }
@@ -53,103 +53,78 @@ impl<K: Eq + Hash + Copy + Debug, P> Graph<K, P> {
     }
 
     fn dijekstra(&self, start: &K, end: &K) -> Option<Vec<K>> {
-        let mut visited = HashMap::new();
+        let mut known = HashMap::new();
         let mut costs = HashMap::new();
+        let mut paths = HashMap::new();
 
         // 1. mark all nodes as unvisited
         for (id, _) in &self.nodes {
-            visited.insert(id, false);
+            known.insert(id, false);
         }
 
-        let mut current = start;
-        costs.insert(current, (0u32, current));
+        costs.insert(start, 0);
 
-        // for _ in 0..2000 {
         loop {
-            let (current_cost, _) = *costs.get(current).unwrap();
-            let mut next = current;
+            // 1. find chapest unknown node
+            let mut unknown_nodes = vec![];
+            for (id, is_known) in &known {
+                if *is_known {
+                    continue;
+                }
+                if costs.contains_key(id) {
+                    let cost = costs.get(id).unwrap();
+                    unknown_nodes.push((*id, *cost));
+                }
+            }
+            if unknown_nodes.len() == 0 {
+                println!("no unknown nodes remaining");
+                break;
+            }
+            unknown_nodes.sort_by_key(|x| x.1);
+            let (current, current_cost) = unknown_nodes[0];
+
+            // 2. mark current node as known
+            known.insert(current, true);
+
+            // 3. inspect all unknown nodes of current node
             let edges = self.edges.get(current);
             match edges {
-                None => {
-                    break;
-                }
+                None => {}
                 Some(edges) => {
-                    let mut min = 1_000_000_000u32;
-                    println!("Inspecting {} edges", edges.len());
                     for (other, edge_cost) in edges {
-                        // check maybe other is visited
-                        if *visited.get(other).unwrap() {
+                        // skip edge is node is known
+                        if *known.get(other).unwrap() {
                             continue;
                         }
 
-                        let mut cost = current_cost + *edge_cost;
-
-                        println!("Inspect edge {:?} -> {:?} ({})", current, other, cost);
-
-                        if costs.contains_key(other) {
-                            let (old_cost, _) = *costs.get(other).unwrap();
-                            if cost < old_cost {
-                                costs.insert(other, (cost, current));
-                            } else {
-                                cost = old_cost;
-                            }
-                        } else {
-                            costs.insert(other, (cost, current));
-                        }
-
-                        if cost < min {
-                            println!("New next node is {:?}", other);
-                            min = cost;
-                            next = other;
-                        }
-                    }
-
-                    visited.insert(current, true);
-
-                    if current == next {
-                        println!("Stuck at {:?}. Check others", next);
-
-                        let mut others_to_check = vec![];
-                        for (id, (cost, parent)) in &costs {
-                            if !*visited.get(id).unwrap() {
-                                others_to_check.push((cost, parent));
-                            }
-                        }
-
-                        if others_to_check.len() > 0 {
-                            others_to_check.sort_by_key(|x| x.0);
-                            current = others_to_check[0].1;
-                        } else {
-                            break;
-                        }
-                    } else {
-                        current = next;
+                        let cost = current_cost + *edge_cost;
+                        costs.insert(other, cost);
+                        paths.insert(other, current);
                     }
                 }
             }
-            if current == end {
-                break;
-            }
         }
 
-        if current == end {
-            let mut cursor = current;
-            let mut route = vec![*cursor];
-            loop {
-                let (_, parent) = costs.get(cursor).unwrap();
-                route.push(**parent);
-                cursor = parent;
-                if cursor == start {
+        let mut cursor = end;
+        let mut route = vec![*cursor];
+        loop {
+            let parent = paths.get(cursor);
+            match parent {
+                None => {
                     break;
                 }
+                Some(parent) => {
+                    route.push(**parent);
+                    cursor = parent;
+                }
             }
-            route.reverse();
-
-            return Some(route);
         }
+        route.reverse();
 
-        println!("Djekstra end. Final node is {:?}", current);
-        None
+        Some(route)
+
+        // println!("Djekstra end. Final node is {:?}", current);
+        // None
     }
 }
 
@@ -184,9 +159,9 @@ impl Landscape {
     }
 
     fn elevation_at_step(&self, start: &Location, end: &Location) -> i32 {
-        let s = &self.grid[start.y][start.x];
-        let e = &self.grid[end.y][end.x];
-        *e as i32 - *s as i32
+        let a = self.elevation_at(start) as i32;
+        let b = self.elevation_at(end) as i32;
+        b - a
     }
 
     fn left(&self, loc: &Location) -> Option<Location> {
@@ -401,8 +376,8 @@ fn main() {
         }
     }
     for (a, b) in edges {
-        let elevation = landscape.elevation_at(&a);
-        graph.add_edge(a, b, elevation);
+        let cost = landscape.elevation_at_step(&a, &b);
+        graph.add_edge(a, b, cost);
     }
 
     let route = graph.dijekstra(&start, &end);
