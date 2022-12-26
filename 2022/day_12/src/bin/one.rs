@@ -154,40 +154,20 @@ impl<K: Eq + Hash + Copy + Debug, P> Graph<K, P> {
 }
 
 #[derive(Debug, Clone)]
-struct Cell {
-    elevation: u32,
-    visited: bool,
+struct Landscape {
+    grid: Vec<Vec<u32>>,
 }
 
-impl Cell {
-    fn new(elevation: u32) -> Cell {
-        Cell {
-            elevation,
-            visited: false,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-struct Env {
-    grid: Vec<Vec<Cell>>,
-}
-
-impl Env {
-    fn new() -> Env {
-        Env { grid: vec![] }
+impl Landscape {
+    fn new() -> Landscape {
+        Landscape { grid: vec![] }
     }
 
     fn shape(&self) -> (usize, usize) {
         (self.grid[0].len(), self.grid.len())
     }
 
-    fn is_unvisited(&self, loc: &Location) -> bool {
-        let cell = &self.grid[loc.y][loc.x];
-        !cell.visited
-    }
-
-    // end is at the same elevation or +1 step (-1 is not available)
+    // end is at the same elevation or +1 step or lower
     fn is_reachable(&self, start: &Location, end: &Location) -> bool {
         let slope = self.elevation_at_step(start, end);
         // elevation of destination cell can be much lower than current cell
@@ -200,17 +180,13 @@ impl Env {
 
     fn elevation_at(&self, loc: &Location) -> u32 {
         let s = &self.grid[loc.y][loc.x];
-        s.elevation
+        *s
     }
 
     fn elevation_at_step(&self, start: &Location, end: &Location) -> i32 {
         let s = &self.grid[start.y][start.x];
         let e = &self.grid[end.y][end.x];
-        e.elevation as i32 - s.elevation as i32
-    }
-
-    fn visit(&mut self, loc: &Location) {
-        self.grid[loc.y][loc.x].visited = true
+        *e as i32 - *s as i32
     }
 
     fn left(&self, loc: &Location) -> Option<Location> {
@@ -220,7 +196,6 @@ impl Env {
         Some(Location {
             x: loc.x - 1,
             y: loc.y,
-            // direction: Direction::Left,
         })
     }
 
@@ -232,7 +207,6 @@ impl Env {
         Some(Location {
             x: loc.x + 1,
             y: loc.y,
-            // direction: Direction::Right,
         })
     }
 
@@ -243,7 +217,6 @@ impl Env {
         Some(Location {
             x: loc.x,
             y: loc.y - 1,
-            // direction: Direction::Up,
         })
     }
 
@@ -255,7 +228,6 @@ impl Env {
         Some(Location {
             x: loc.x,
             y: loc.y + 1,
-            // direction: Direction::Down,
         })
     }
 
@@ -280,29 +252,6 @@ impl Env {
         }
         result
     }
-
-    fn next_possible_steps(&self, loc: &Location) -> Vec<(u32, Location)> {
-        let steps = vec![
-            self.left(loc),
-            self.right(loc),
-            self.up(loc),
-            self.down(loc),
-        ];
-        let mut result = vec![];
-        for step in steps {
-            match step {
-                None => {}
-                Some(next) => {
-                    if self.is_unvisited(&next) && self.is_reachable(loc, &next) {
-                        let mut cost = self.elevation_at_step(loc, &next);
-                        cost += 1;
-                        result.push((cost as u32, next));
-                    }
-                }
-            }
-        }
-        result
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -319,7 +268,6 @@ enum Direction {
 struct Location {
     x: usize,
     y: usize,
-    // direction: Direction,
 }
 
 impl Location {
@@ -365,10 +313,10 @@ fn route_to_directions(route: &Vec<Location>) -> Vec<Direction> {
     result
 }
 
-fn read_input() -> (Location, Location, Env) {
+fn read_input() -> (Location, Location, Landscape) {
     let mut start = Location { x: 0, y: 0 };
     let mut end = Location { x: 0, y: 0 };
-    let mut env = Env::new();
+    let mut env = Landscape::new();
     for (y, line) in io::stdin().lines().enumerate() {
         let mut row = vec![];
         match line {
@@ -379,15 +327,15 @@ fn read_input() -> (Location, Location, Env) {
                 for (x, char) in value.chars().enumerate() {
                     match char {
                         'S' => {
-                            row.push(Cell::new(A - A));
+                            row.push(A - A);
                             start = Location { x, y };
                         }
                         'E' => {
-                            row.push(Cell::new(Z - A));
+                            row.push(Z - A);
                             end = Location { x, y };
                         }
                         c => {
-                            row.push(Cell::new(c as u32 - A));
+                            row.push(c as u32 - A);
                         }
                     }
                 }
@@ -398,7 +346,7 @@ fn read_input() -> (Location, Location, Env) {
     (start, end, env)
 }
 
-fn print_route(end: &Location, env: &Env, route: &Vec<Location>) {
+fn print_route(end: &Location, land: &Landscape, route: &Vec<Location>) {
     let mut hash = HashMap::new();
     let directions = route_to_directions(route);
     for (i, dir) in directions.iter().enumerate() {
@@ -413,7 +361,7 @@ fn print_route(end: &Location, env: &Env, route: &Vec<Location>) {
         };
         hash.insert(loc.as_tuple(), c);
     }
-    let (w, h) = env.shape();
+    let (w, h) = land.shape();
     for y in 0..h {
         for x in 0..w {
             let cell = (x, y);
@@ -432,31 +380,30 @@ fn print_route(end: &Location, env: &Env, route: &Vec<Location>) {
 }
 
 fn main() {
-    let (start, end, env) = read_input();
+    let (start, end, landscape) = read_input();
 
     println!("start={:?}", start);
     println!("end={:?}", end);
 
     // Build graph
     let mut graph = Graph::<Location, u32>::new();
-    let (w, h) = env.shape();
+    let (w, h) = landscape.shape();
     let mut edges = vec![];
     for y in 0..h {
         for x in 0..w {
             let loc = Location { x, y };
-            let elevation = env.elevation_at(&loc);
+            let elevation = landscape.elevation_at(&loc);
             graph.add_node(loc, elevation);
-            let neighbors = env.get_adjacent(&loc);
+            let neighbors = landscape.get_adjacent(&loc);
             for loc_b in neighbors {
                 edges.push((loc, loc_b));
             }
         }
     }
     for (a, b) in edges {
-        let elevation = env.elevation_at(&a);
+        let elevation = landscape.elevation_at(&a);
         graph.add_edge(a, b, elevation);
     }
-    // println!("{:?}", graph);
 
     let route = graph.dijekstra(&start, &end);
     match route {
@@ -465,27 +412,9 @@ fn main() {
         }
         Some(route) => {
             println!("Route steps {}", route.len() - 1);
-            print_route(&end, &env, &route);
+            print_route(&end, &landscape, &route);
         }
     }
-
-    // println!("Visit map:");
-    // let (w, h) = env.shape();
-    // for y in 0..h {
-    //     for x in 0..w {
-    //         let elevation = env.elevation_at_step(&start, &end);
-    //         let mut marker = if env.is_unvisited(&Location { x, y }) {
-    //             '.'
-    //         } else {
-    //             '#'
-    //         };
-    //         if end.x == x && end.y == y {
-    //             marker = 'E';
-    //         }
-    //         print!("{}", marker);
-    //     }
-    //     println!("");
-    // }
 }
 
 #[cfg(test)]
