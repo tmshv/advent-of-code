@@ -77,7 +77,6 @@ impl<K: Eq + Hash + Copy + Debug, P> Graph<K, P> {
                 }
             }
             if unknown_nodes.len() == 0 {
-                println!("no unknown nodes remaining");
                 break;
             }
             unknown_nodes.sort_by_key(|x| x.1);
@@ -98,8 +97,17 @@ impl<K: Eq + Hash + Copy + Debug, P> Graph<K, P> {
                         }
 
                         let cost = current_cost + *edge_cost;
-                        costs.insert(other, cost);
-                        paths.insert(other, current);
+
+                        if costs.contains_key(other) {
+                            let old_cost = *costs.get(other).unwrap();
+                            if old_cost > cost {
+                                costs.insert(other, cost);
+                                paths.insert(other, current);
+                            }
+                        } else {
+                            costs.insert(other, cost);
+                            paths.insert(other, current);
+                        }
                     }
                 }
             }
@@ -107,6 +115,7 @@ impl<K: Eq + Hash + Copy + Debug, P> Graph<K, P> {
 
         let mut cursor = end;
         let mut route = vec![*cursor];
+        let mut total_cost = 0;
         loop {
             let parent = paths.get(cursor);
             match parent {
@@ -114,17 +123,20 @@ impl<K: Eq + Hash + Copy + Debug, P> Graph<K, P> {
                     break;
                 }
                 Some(parent) => {
+                    let cost = costs.get(cursor).unwrap();
+                    total_cost += cost;
+
                     route.push(**parent);
                     cursor = parent;
                 }
             }
         }
+        if cursor != start {
+            return None;
+        }
         route.reverse();
-
+        println!("Toal cost = {}", total_cost);
         Some(route)
-
-        // println!("Djekstra end. Final node is {:?}", current);
-        // None
     }
 }
 
