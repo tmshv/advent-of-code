@@ -1,9 +1,47 @@
-use std::{fmt::Debug, io};
+use std::{fmt::Debug, io, cmp::{Ord, PartialOrd, Ordering}};
 
 #[derive(Debug, PartialEq, Eq)]
 enum Item {
     Integer(u32),
     List(Vec<Item>),
+}
+
+impl Ord for Item {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Item::Integer(a), Item::Integer(b)) => a.cmp(b),
+            (Item::Integer(value), _) => {
+                let list = Item::List(vec![Item::Integer(*value)]);
+                list.cmp(other)
+            },
+            (_, Item::Integer(value)) => {
+                let list = Item::List(vec![Item::Integer(*value)]);
+                self.cmp(&list)
+            },
+            (Item::List(left_items), Item::List(right_items)) => {
+                let mut a = left_items.iter();
+                let mut b = right_items.iter();
+                loop {
+                    match (a.next(), b.next()) {
+                        (Some(a), Some(b)) => match a.cmp(b) {
+                            Ordering::Equal => continue,
+                            other => return other,
+                        },
+                        // If the right list runs out of items first, the inputs are not in the right order
+                        (Some(_), None) => return Ordering::Greater,
+                        (None, Some(_)) => return Ordering::Less,
+                        (None, None) => return Ordering::Equal,
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl PartialOrd for Item {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 fn parse_row(row: &str) -> Item {
@@ -75,6 +113,12 @@ struct Pair {
     right: Item,
 }
 
+impl Pair {
+    fn compare(&self) -> bool {
+        self.left <= self.right
+    }
+}
+
 fn read_input() -> Vec<Pair> {
     let mut result = vec![];
     let mut buffer: Vec<String> = vec![];
@@ -100,15 +144,21 @@ fn read_input() -> Vec<Pair> {
 fn main() {
     let pairs = read_input();
     // let x = parse_row("[[],1,[2,3,4],5]");
-    println!("{:?}", pairs);
 
-    // parse_row("[]");
-    // parse_row("[1, [2, [3, 4]], [], 5]");
+    let mut count = 0;
+    for (i, pair) in pairs.iter().enumerate() {
+        if pair.compare() {
+            println!("Good {}", i + 1);
+            count += i + 1;
+        }
+    }
+
+    println!("{:?}", count);
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{parse_row, Item};
+    use crate::{parse_row, Item, Pair};
 
     #[test]
     fn parse_empty_list() {
@@ -146,5 +196,59 @@ mod tests {
                 Item::Integer(5),
             ])
         );
+    }
+
+    #[test]
+    fn pair_compare_equal_integer_list_of_same_size() {
+        let pair = Pair {
+            left: Item::List(vec![Item::Integer(1), Item::Integer(2), Item::Integer(3)]),
+            right: Item::List(vec![Item::Integer(1), Item::Integer(2), Item::Integer(3)]),
+        };
+        let result = pair.compare();
+        assert_eq!(result, true);
+    }
+
+    #[test]
+    fn pair_compare_right_ordered_integer_list_of_same_size() {
+        let pair = Pair {
+            left: Item::List(vec![
+                Item::Integer(1),
+                Item::Integer(1),
+                Item::Integer(3),
+                Item::Integer(1),
+                Item::Integer(1),
+            ]),
+            right: Item::List(vec![
+                Item::Integer(1),
+                Item::Integer(1),
+                Item::Integer(5),
+                Item::Integer(1),
+                Item::Integer(1),
+            ]),
+        };
+        let result = pair.compare();
+        assert_eq!(result, true);
+    }
+
+    #[test]
+    fn pair_compare_wrong_ordered_integer_list_of_same_size() {
+        let pair = Pair {
+            left: Item::List(vec![
+                Item::Integer(1),
+                Item::Integer(8),
+                Item::Integer(3),
+                Item::Integer(1),
+                Item::Integer(1),
+            ]),
+            right: Item::List(vec![
+                Item::Integer(1),
+                Item::Integer(1),
+                Item::Integer(5),
+                Item::Integer(1),
+                Item::Integer(1),
+            ]),
+        };
+        let result = pair.compare();
+        assert_eq!(result, false);
     }
 }
