@@ -42,4 +42,4 @@ What is the fewest steps required to move from your current position to the loca
 cat input.txt | cargo run --bin one
 ```
 
-Result: ``
+Result: `481`
