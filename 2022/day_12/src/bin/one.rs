@@ -1,7 +1,7 @@
 use std::{collections::HashMap, fmt::Debug, hash::Hash, io};
 
-const A: u32 = 'a' as u32;
-const Z: u32 = 'z' as u32;
+const A: i32 = 'a' as i32;
+const Z: i32 = 'z' as i32;
 
 #[derive(Debug, Clone)]
 struct Node<K, T> {
@@ -142,7 +142,7 @@ impl<K: Eq + Hash + Copy + Debug, P> Graph<K, P> {
 
 #[derive(Debug, Clone)]
 struct Landscape {
-    grid: Vec<Vec<u32>>,
+    grid: Vec<Vec<i32>>,
 }
 
 impl Landscape {
@@ -165,14 +165,14 @@ impl Landscape {
         return slope == 0 || slope == 1;
     }
 
-    fn elevation_at(&self, loc: &Location) -> u32 {
+    fn elevation_at(&self, loc: &Location) -> i32 {
         let s = &self.grid[loc.y][loc.x];
         *s
     }
 
     fn elevation_at_step(&self, start: &Location, end: &Location) -> i32 {
-        let a = self.elevation_at(start) as i32;
-        let b = self.elevation_at(end) as i32;
+        let a = self.elevation_at(start);
+        let b = self.elevation_at(end);
         b - a
     }
 
@@ -322,7 +322,7 @@ fn read_input() -> (Location, Location, Landscape) {
                             end = Location { x, y };
                         }
                         c => {
-                            row.push(c as u32 - A);
+                            row.push(c as i32 - A);
                         }
                     }
                 }
@@ -373,22 +373,22 @@ fn main() {
     println!("end={:?}", end);
 
     // Build graph
-    let mut graph = Graph::<Location, u32>::new();
+    let mut graph = Graph::<Location, i32>::new();
     let (w, h) = landscape.shape();
     let mut edges = vec![];
-    for y in 0..h {
-        for x in 0..w {
-            let loc = Location { x, y };
-            let elevation = landscape.elevation_at(&loc);
-            graph.add_node(loc, elevation);
-            let neighbors = landscape.get_adjacent(&loc);
+    for x in 0..w {
+        for y in 0..h {
+            let loc_a = Location { x, y };
+            let elevation = landscape.elevation_at(&loc_a);
+            graph.add_node(loc_a, elevation);
+            let neighbors = landscape.get_adjacent(&loc_a);
             for loc_b in neighbors {
-                edges.push((loc, loc_b));
+                let cost = landscape.elevation_at_step(&loc_a, &loc_b);
+                edges.push((loc_a, loc_b, cost));
             }
         }
     }
-    for (a, b) in edges {
-        let cost = landscape.elevation_at_step(&a, &b);
+    for (a, b, cost) in edges {
         graph.add_edge(a, b, cost);
     }
 
