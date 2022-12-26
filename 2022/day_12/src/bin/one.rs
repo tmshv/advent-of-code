@@ -471,4 +471,54 @@ mod tests {
         let route = graph.dijekstra(&"A", &"C");
         assert_eq!(route, None);
     }
+
+    #[test]
+    fn graph_path_finding_works_other_graph() {
+        let mut graph = Graph::<u32, u32>::new();
+        graph.add_node(0, 0);
+        graph.add_node(1, 0);
+        graph.add_node(2, 0);
+        graph.add_node(3, 0);
+        graph.add_node(4, 0);
+        graph.add_node(5, 0);
+        graph.add_node(6, 0);
+        graph.add_node(7, 0);
+        graph.add_edge(0, 3, 1);
+        graph.add_edge(0, 4, 3);
+        graph.add_edge(1, 3, 6);
+        graph.add_edge(2, 1, 7);
+        graph.add_edge(3, 5, 4);
+        graph.add_edge(3, 7, 1);
+        graph.add_edge(4, 2, 4);
+        graph.add_edge(4, 7, 8);
+        graph.add_edge(5, 3, 1);
+        graph.add_edge(5, 6, 8);
+        graph.add_edge(6, 2, 4);
+        graph.add_edge(6, 7, 1);
+        graph.add_edge(7, 6, 8);
+
+        let route = graph.dijekstra(&0, &0);
+        assert_eq!(route, Some(vec![0]));
+
+        let route = graph.dijekstra(&0, &1);
+        assert_eq!(route, Some(vec![0, 4, 2, 1]));
+
+        let route = graph.dijekstra(&0, &2);
+        assert_eq!(route, Some(vec![0, 4, 2]));
+
+        let route = graph.dijekstra(&0, &3);
+        assert_eq!(route, Some(vec![0, 3]));
+
+        let route = graph.dijekstra(&0, &4);
+        assert_eq!(route, Some(vec![0, 4]));
+
+        let route = graph.dijekstra(&0, &5);
+        assert_eq!(route, Some(vec![0, 3, 5]));
+
+        let route = graph.dijekstra(&0, &6);
+        assert_eq!(route, Some(vec![0, 3, 7, 6]));
+
+        let route = graph.dijekstra(&0, &7);
+        assert_eq!(route, Some(vec![0, 3, 7]));
+    }
 }
