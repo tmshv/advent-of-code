@@ -115,4 +115,4 @@ Consult the report from the sensors you just deployed. In the row where `y=20000
 cat input.txt | cargo run --release --bin one
 ```
 
-Result: ``
+Result: `4582667`

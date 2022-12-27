@@ -1,5 +1,6 @@
+use regex::Regex;
 use std::{
-    collections::HashMap,
+    collections::HashSet,
     fmt::Debug,
     hash::Hash,
     io,
@@ -7,7 +8,6 @@ use std::{
     ops::{Add, Sub},
     vec,
 };
-use regex::Regex;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 struct Vector {
@@ -18,12 +18,6 @@ struct Vector {
 impl Vector {
     fn new(x: i32, y: i32) -> Vector {
         Vector { x, y }
-    }
-    fn zero() -> Vector {
-        Vector { x: 0, y: 0 }
-    }
-    fn one() -> Vector {
-        Vector { x: 1, y: 1 }
     }
     fn min() -> Vector {
         Vector {
@@ -91,18 +85,18 @@ fn read_input() -> (Vec<Vector>, Vec<Vector>) {
     (sensors, beacons)
 }
 
-fn create_grid(tl: &Vector, br: &Vector) -> Vec<Vec<Vector>> {
-    let mut items = vec![];
-    for y in tl.y..=br.y {
-        let mut row = vec![];
-        for x in tl.x..=br.x {
-            let v = Vector::new(x, y);
-            row.push(v);
-        }
-        items.push(row);
-    }
-    items
-}
+// fn create_grid(tl: &Vector, br: &Vector) -> Vec<Vec<Vector>> {
+//     let mut items = vec![];
+//     for y in tl.y..=br.y {
+//         let mut row = vec![];
+//         for x in tl.x..=br.x {
+//             let v = Vector::new(x, y);
+//             row.push(v);
+//         }
+//         items.push(row);
+//     }
+//     items
+// }
 
 fn get_bbox(items: &Vec<Vector>) -> (Vector, Vector) {
     let mut tl = Vector::max();
@@ -125,7 +119,7 @@ fn get_bbox(items: &Vec<Vector>) -> (Vector, Vector) {
     (tl, br)
 }
 
-fn manhattan(x: &Vector, y: &Vector) -> u32 {
+fn manhattan(x: &Vector, y: &Vector) -> i32 {
     // Take the sum of the absolute values of the differences of the coordinates.
     // For example, if x=(a,b) and y=(c,d), the Manhattan distance between x and y is
     // |a-c| + |b-d|
@@ -133,7 +127,7 @@ fn manhattan(x: &Vector, y: &Vector) -> u32 {
     let (a, b) = x.as_tuple();
     let (c, d) = y.as_tuple();
 
-    (a - c).abs() as u32 + (b - d).abs() as u32
+    (a - c).abs() + (b - d).abs()
 }
 
 fn main() {
@@ -154,73 +148,59 @@ fn main() {
         coords.push(*v);
     }
     let (tl, br) = get_bbox(&coords);
-    println!("{:?}", br - tl);
-    // return;
-    let grid = create_grid(&tl, &br);
-    // let landscape = Landscape::new(&grid);
+    println!("canvas size is {:?}", br - tl);
 
-    println!("grid items {:?}", grid.len());
     println!("{:?}, {:?}", tl, br);
 
-    let mut coverage = HashMap::new();
-    for (sensor, beacon) in zip(&sensors, &beacons) {
-        // let target_dist = landscape.mdist(*sensor, *beacon);
-        let target_dist = manhattan(sensor, beacon);
-        for row in &grid {
-            for v in row {
-                // let dist = landscape.mdist(*sensor, *v);
-                let dist = manhattan(sensor, v);
-                let is_cover = dist <= target_dist;
-                if is_cover {
-                    coverage.insert(v, is_cover);
-                }
-            }
-        }
-    }
-
-    // let target_dist = landscape.mdist(Vector::new(8, 7), Vector::new(2, 10));
-    // println!("target dist is {:?}", target_dist);
+    let max_dist = zip(&sensors, &beacons)
+        .map(|(s, b)| manhattan(s, b))
+        .max()
+        .unwrap();
+    // let max_dist = 0;
 
     // let target_line = 10;
-    let target_line = 200000;
+    let target_line = 2000000;
+    let min_x = tl.x - max_dist;
+    let max_x = br.x + max_dist;
 
-    let mut count = 0;
-    for row in &grid {
-        for v in row {
-            let is_cover = match coverage.get(v) {
-                None => false,
-                Some(_) => true,
-            };
-            if v.y == target_line && is_cover && !beacons.contains(v) {
-                count += 1;
+    println!("{} <> {}", min_x, max_x);
+
+    let mut set = HashSet::new();
+    // let mut count = 0;
+    for (sensor, beacon) in zip(&sensors, &beacons) {
+        let target_dist = manhattan(sensor, beacon);
+
+        // println!("{:?} > {:?}", sensor, beacon);
+
+        // let mut s = vec![];
+        for x in min_x..=max_x {
+            let v = Vector::new(x, target_line);
+            let dist = manhattan(sensor, &v);
+
+            // println!("dist = {:?}", dist);
+            if manhattan(beacon, &v) == 0 {
+                println!("skip {:?}", v);
+                continue;
+            }
+
+            let is_cover = dist <= target_dist;
+            if is_cover {
+                set.insert(v);
+                // count += 1;
             }
         }
-    }
-    println!("Result: {}", count);
 
-    // for row in &grid {
-    //     for v in row {
-    //         let is_cover = match coverage.get(v) {
-    //             None => false,
-    //             Some(_) => true,
-    //         };
-    //         if sensors.contains(v) {
-    //             print!("S");
-    //         } else if beacons.contains(v) {
-    //             print!("B");
-    //         } else if is_cover {
-    //             print!("#");
-    //         } else {
-    //             print!(".");
-    //         }
-    //     }
-    //     println!("");
-    // }
+        // let bb = get_bbox(&s);
+        // println!("manhattan = {}; line cover = {:?}", target_dist, bb);
+    }
+
+    let count = set.len();
+    println!("Result: {}", count);
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{get_bbox, parse_row, Vector};
+    use crate::{get_bbox, manhattan, parse_row, Vector};
 
     #[test]
     fn parse_row_from_example() {
@@ -228,6 +208,12 @@ mod tests {
             "Sensor at x=2, y=18: closest beacon is at x=-2, y=15",
         ));
         assert_eq!(result, (Vector::new(2, 18), Vector::new(-2, 15)));
+    }
+
+    #[test]
+    fn manhattan9() {
+        let dist = manhattan(&Vector::new(8, 7), &Vector::new(2, 10));
+        assert_eq!(dist, 9);
     }
 
     #[test]
