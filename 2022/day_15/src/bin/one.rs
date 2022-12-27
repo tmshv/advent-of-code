@@ -85,19 +85,6 @@ fn read_input() -> (Vec<Vector>, Vec<Vector>) {
     (sensors, beacons)
 }
 
-// fn create_grid(tl: &Vector, br: &Vector) -> Vec<Vec<Vector>> {
-//     let mut items = vec![];
-//     for y in tl.y..=br.y {
-//         let mut row = vec![];
-//         for x in tl.x..=br.x {
-//             let v = Vector::new(x, y);
-//             row.push(v);
-//         }
-//         items.push(row);
-//     }
-//     items
-// }
-
 fn get_bbox(items: &Vec<Vector>) -> (Vector, Vector) {
     let mut tl = Vector::max();
     let mut br = Vector::min();
@@ -131,13 +118,6 @@ fn manhattan(x: &Vector, y: &Vector) -> i32 {
 }
 
 fn main() {
-    // let mut graph = UnGraph::<Vector, u32>::default();
-    // let n1 = graph.add_node(Vector::zero());
-    // let n2 = graph.add_node(Vector::one());
-    // graph.add_edge(n1, n2, 123);
-
-    // from_edges(&[(Vector::zero(), Vector::one())]);
-
     let (sensors, beacons) = read_input();
 
     let mut coords = vec![];
@@ -148,50 +128,32 @@ fn main() {
         coords.push(*v);
     }
     let (tl, br) = get_bbox(&coords);
-    println!("canvas size is {:?}", br - tl);
-
-    println!("{:?}, {:?}", tl, br);
 
     let max_dist = zip(&sensors, &beacons)
         .map(|(s, b)| manhattan(s, b))
         .max()
         .unwrap();
-    // let max_dist = 0;
 
-    // let target_line = 10;
     let target_line = 2000000;
     let min_x = tl.x - max_dist;
     let max_x = br.x + max_dist;
 
-    println!("{} <> {}", min_x, max_x);
-
     let mut set = HashSet::new();
-    // let mut count = 0;
     for (sensor, beacon) in zip(&sensors, &beacons) {
         let target_dist = manhattan(sensor, beacon);
-
-        // println!("{:?} > {:?}", sensor, beacon);
-
-        // let mut s = vec![];
         for x in min_x..=max_x {
             let v = Vector::new(x, target_line);
             let dist = manhattan(sensor, &v);
 
-            // println!("dist = {:?}", dist);
             if manhattan(beacon, &v) == 0 {
-                println!("skip {:?}", v);
                 continue;
             }
 
             let is_cover = dist <= target_dist;
             if is_cover {
                 set.insert(v);
-                // count += 1;
             }
         }
-
-        // let bb = get_bbox(&s);
-        // println!("manhattan = {}; line cover = {:?}", target_dist, bb);
     }
 
     let count = set.len();
