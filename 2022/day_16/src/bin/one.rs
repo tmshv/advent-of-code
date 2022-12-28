@@ -69,7 +69,7 @@ impl Variant {
     }
 
     fn is_full(&self) -> bool {
-        self.sequence.len() as u32 == M
+        self.sequence.len() as u32 == M + 1
     }
 
     fn can_open(&self, valve: &Valve) -> bool {
