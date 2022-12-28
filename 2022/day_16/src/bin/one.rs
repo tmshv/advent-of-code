@@ -172,17 +172,8 @@ fn read_input() -> Vec<Valve> {
 }
 
 fn get_variants(variant: Variant, valves: &HashMap<String, &Valve>) -> Vec<Variant> {
-    // end recursion on:
-    // 1. list of sequence is 30
+    // end recursion if list of sequence is 30 + 1
     if variant.is_full() {
-        // println!("full variant {:?}", variant);
-
-        return vec![variant];
-    }
-    // 2. all valves are open
-    let all_open = valves.iter().all(|(name, _)| variant.is_valve_opened(name));
-    if all_open {
-        println!("ALL ARE OPENED {:?}", variant);
         return vec![variant];
     }
 
@@ -191,18 +182,19 @@ fn get_variants(variant: Variant, valves: &HashMap<String, &Valve>) -> Vec<Varia
 
     let mut result = vec![];
 
-    // 1. open current valve (if we were moved)
+    // 1. open current valve branch
     if variant.can_open(valve) {
-        let branch1 = variant.extend(Action::Open(current.clone()));
-        for variant in get_variants(branch1, valves) {
+        let branch = variant.extend(Action::Open(current.clone()));
+        for variant in get_variants(branch, valves) {
             result.push(variant);
         }
     }
 
-    // 2. move to others
+    // 2. move to others branch
     for next in &valve.tunnels {
         let valve = valves.get(current).unwrap();
-        if !variant.can_move_to(&valve) || variant.is_valve_opened(next) {
+        // if !variant.can_move_to(&valve) || variant.is_valve_opened(next) {
+        if !variant.can_move_to(&valve) {
             continue;
         }
         let branch = variant.extend(Action::Move(next.clone()));
