@@ -1,8 +1,4 @@
-use petgraph::{
-    algo::dijkstra,
-    graph::NodeIndex,
-    Graph,
-};
+use petgraph::{algo::dijkstra, graph::NodeIndex, Graph};
 use regex::Regex;
 use std::{
     collections::{HashMap, HashSet},
@@ -10,7 +6,7 @@ use std::{
     io, vec,
 };
 
-const MINUTES: u32 = 11;
+const MINUTES: i32 = 30;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct Valve {
@@ -22,15 +18,14 @@ struct Valve {
 
 #[derive(Debug, Clone)]
 struct System {
-    graph: Graph<i32, u32>,
+    graph: Graph<i32, i32>,
     nodes: HashMap<String, NodeIndex>,
-    valves: HashMap<String, Valve>,
-    rates: HashMap<NodeIndex, i32>,
+    valves: HashMap<NodeIndex, Valve>,
 }
 
 impl System {
     fn new(valves: &Vec<Valve>) -> System {
-        let mut graph = Graph::<i32, u32>::default();
+        let mut graph = Graph::<i32, i32>::default();
         let nodes: HashMap<String, NodeIndex> = HashMap::from_iter(
             valves
                 .iter()
@@ -43,23 +38,24 @@ impl System {
                 graph.add_edge(*a, *b, 1);
             }
         }
-        let vs = HashMap::from_iter(valves.iter().map(|v| (v.name.clone(), v.clone())));
-        let mut rates: HashMap<NodeIndex, i32> = HashMap::new();
-        for (v, n) in &nodes {
-            let valve = vs.get(v).unwrap();
-            rates.insert(*n, valve.rate);
-        }
+        let valves = HashMap::from_iter(valves.iter().map(|v| {
+            let id = nodes.get(&v.name).unwrap();
+            (*id, v.clone())
+        }));
 
         Self {
             graph,
             nodes,
-            valves: vs,
-            rates,
+            valves,
         }
     }
 
     fn node_id(&self, name: &String) -> NodeIndex {
         *self.nodes.get(name).unwrap()
+    }
+
+    fn get_valve(&self, id: &NodeIndex) -> &Valve {
+        self.valves.get(id).unwrap()
     }
 
     fn get_shortest_path(&self, start: NodeIndex, next: NodeIndex) -> i32 {
@@ -68,18 +64,17 @@ impl System {
         score
     }
 
-    fn solve_from(&self, start: &String, time_left: u32) -> i32 {
+    fn solve_from(&self, start: &String, time_left: i32) -> i32 {
         let start_id = self.node_id(start);
-
         let available_nodes = HashSet::from_iter(
-            self.nodes
+            self.valves
                 .iter()
-                .map(|(name, id)| (*id, self.valves.get(name).unwrap().rate))
-                .filter(|(_, rate)| *rate > 0)
-                .map(|(id, _)| id),
+                .filter(|(_, valve)| valve.rate > 0)
+                .map(|(id, _)| *id),
         );
 
-        let (score, _) = self.best_flow(start_id, HashSet::new(), time_left as i32, available_nodes);
+        let (score, _) =
+            self.best_flow(start_id, HashSet::new(), time_left as i32, &available_nodes);
         score
     }
 
@@ -88,7 +83,7 @@ impl System {
         from_node: NodeIndex,
         visited_nodes: HashSet<NodeIndex>,
         time_left: i32,
-        available_nodes: HashSet<NodeIndex>,
+        available_nodes: &HashSet<NodeIndex>,
     ) -> (i32, HashSet<NodeIndex>) {
         // Check if there's any time left:
         if time_left <= 0 {
@@ -98,21 +93,20 @@ impl System {
 
         // Check if we've already visited this node:
         if visited_nodes.contains(&from_node) {
-            //  # We've already done the best we can from here.
-            // println!("ignore {:?}", from_node);
+            // We've already done the best we can from here.
             return (0, visited_nodes);
         }
 
         // It costs a minute to open this valve:
-        let rate = *self.rates.get(&from_node).unwrap() as i32;
+        let valve = self.get_valve(&from_node);
         // Spend a minute to open it if it has flow:
         let mut t = time_left;
-        if rate > 0 {
+        if valve.rate > 0 {
             t -= 1
         };
 
         // Find total pressure released from opening this node:
-        let local_flow = rate * t;
+        let valve_flow = valve.rate * t;
 
         // Add this node to the visited set:
         let mut new_visited_nodes = visited_nodes.clone();
@@ -123,7 +117,7 @@ impl System {
         let mut max_sub_visited = HashSet::new();
 
         // Look at every major node as a possible next step:
-        for n in &available_nodes {
+        for n in available_nodes {
             // Skip this node:
             if from_node == *n {
                 continue;
@@ -134,7 +128,7 @@ impl System {
 
             // Find the best we could do if we went to n next:
             let (score, path) =
-                self.best_flow(*n, new_visited_nodes.clone(), time, available_nodes.clone());
+                self.best_flow(*n, new_visited_nodes.clone(), time, available_nodes);
 
             // If this beats the previous best, use this instead:
             if score > max_sub_score {
@@ -144,7 +138,7 @@ impl System {
         }
 
         max_sub_visited.insert(from_node);
-        (local_flow + max_sub_score, max_sub_visited)
+        (valve_flow + max_sub_score, max_sub_visited)
     }
 }
 
@@ -185,18 +179,14 @@ fn read_input() -> Vec<Valve> {
 
 fn main() {
     let items = read_input();
-
     let sys = System::new(&items);
     let score = sys.solve_from(&"AA".to_string(), MINUTES);
-    println!("{}", score);
+    println!("Result: {}", score);
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::HashSet,
-        fs,
-    };
+    use std::collections::HashSet;
 
     use crate::{parse_row, Valve};
 
@@ -234,10 +224,5 @@ mod tests {
                 tunnels: HashSet::from_iter(["GG".to_string()]),
             }
         );
-    }
-
-    #[test]
-    fn solve_test() {
-        let file_contents = fs::read_to_string("test.txt").unwrap();
     }
 }
