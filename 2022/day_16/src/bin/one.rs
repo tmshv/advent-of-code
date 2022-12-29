@@ -1,40 +1,36 @@
-use petgraph::{algo::astar, graph::NodeIndex, prelude::UnGraph, Graph};
+use petgraph::{
+    algo::dijkstra,
+    graph::NodeIndex,
+    Graph,
+};
 use regex::Regex;
 use std::{
     collections::{HashMap, HashSet},
-    fmt::{Debug, Display},
-    hash::Hash,
+    fmt::Debug,
     io, vec,
 };
 
 const MINUTES: u32 = 11;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum Action {
-    Start(String),
-    Open(String),
-    Move(String),
-}
-
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct Valve {
     id: usize,
     name: String,
-    rate: u32,
+    rate: i32,
     tunnels: HashSet<String>,
 }
 
 #[derive(Debug, Clone)]
 struct System {
-    graph: Graph<u32, u32>,
+    graph: Graph<i32, u32>,
     nodes: HashMap<String, NodeIndex>,
     valves: HashMap<String, Valve>,
-    open: HashSet<String>,
+    rates: HashMap<NodeIndex, i32>,
 }
 
 impl System {
     fn new(valves: &Vec<Valve>) -> System {
-        let mut graph = Graph::<u32, u32>::default();
+        let mut graph = Graph::<i32, u32>::default();
         let nodes: HashMap<String, NodeIndex> = HashMap::from_iter(
             valves
                 .iter()
@@ -47,192 +43,108 @@ impl System {
                 graph.add_edge(*a, *b, 1);
             }
         }
+        let vs = HashMap::from_iter(valves.iter().map(|v| (v.name.clone(), v.clone())));
+        let mut rates: HashMap<NodeIndex, i32> = HashMap::new();
+        for (v, n) in &nodes {
+            let valve = vs.get(v).unwrap();
+            rates.insert(*n, valve.rate);
+        }
+
         Self {
             graph,
             nodes,
-            valves: HashMap::from_iter(valves.iter().map(|v| (v.name.clone(), v.clone()))),
-            open: HashSet::new(),
-        }
-    }
-
-    fn get_next(&self, start: String, minutes_left: u32) {
-        let start_id = self.node_id(&start);
-        for (next, valve) in &self.valves {
-            // skip if it is start
-            if *next == start {
-                continue;
-            }
-            // skip if it is open
-            if self.open.contains(next) {
-                continue;
-            }
-            // skip evaluating node with 0 rate
-            if valve.rate == 0 {
-                continue;
-            }
-
-            let next_id = self.node_id(next);
-            // let res = dijkstra(&self.graph, start_id, Some(next_id), |_| 1);
-            let path = astar(
-                &self.graph,
-                start_id,         // start
-                |n| n == next_id, // is_goal
-                |e| *e.weight(),  // edge_cost
-                |_| 0,            // estimate_cost
-            );
-
-            match path {
-                Some((travel_cost, path)) => {
-                    if minutes_left < travel_cost {
-                        println!("have no time to react valve by this path");
-                        continue;
-                    }
-
-                    let time = minutes_left - travel_cost - 1; // -1 cause it will be wasted for opening
-                    let pressure = time * valve.rate;
-
-                    println!(
-                        "{} -> {} travel={}, time={} * rate={} = pressure={}",
-                        start, next, travel_cost, time, valve.rate, pressure
-                    );
-                }
-                None => println!("There was no path"),
-            }
+            valves: vs,
+            rates,
         }
     }
 
     fn node_id(&self, name: &String) -> NodeIndex {
         *self.nodes.get(name).unwrap()
     }
-}
 
-#[derive(Debug, Clone)]
-struct Variant {
-    sequence: Vec<Action>,
-    opened: HashSet<usize>,
-}
+    fn get_shortest_path(&self, start: NodeIndex, next: NodeIndex) -> i32 {
+        let res = dijkstra(&self.graph, start, Some(next), |_| 1);
+        let score = *res.get(&next).unwrap();
+        score
+    }
 
-impl Display for Variant {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for action in &self.sequence {
-            match action {
-                Action::Start(name) => {
-                    write!(f, "->{} ", name)?;
-                }
-                Action::Open(name) => {
-                    write!(f, "^{} ", name)?;
-                }
-                Action::Move(name) => {
-                    write!(f, ">{} ", name)?;
-                }
+    fn solve_from(&self, start: &String, time_left: u32) -> i32 {
+        let start_id = self.node_id(start);
+
+        let available_nodes = HashSet::from_iter(
+            self.nodes
+                .iter()
+                .map(|(name, id)| (*id, self.valves.get(name).unwrap().rate))
+                .filter(|(_, rate)| *rate > 0)
+                .map(|(id, _)| id),
+        );
+
+        let (score, _) = self.best_flow(start_id, HashSet::new(), time_left as i32, available_nodes);
+        score
+    }
+
+    fn best_flow(
+        &self,
+        from_node: NodeIndex,
+        visited_nodes: HashSet<NodeIndex>,
+        time_left: i32,
+        available_nodes: HashSet<NodeIndex>,
+    ) -> (i32, HashSet<NodeIndex>) {
+        // Check if there's any time left:
+        if time_left <= 0 {
+            // No time left to release any pressure.
+            return (0, visited_nodes);
+        }
+
+        // Check if we've already visited this node:
+        if visited_nodes.contains(&from_node) {
+            //  # We've already done the best we can from here.
+            // println!("ignore {:?}", from_node);
+            return (0, visited_nodes);
+        }
+
+        // It costs a minute to open this valve:
+        let rate = *self.rates.get(&from_node).unwrap() as i32;
+        // Spend a minute to open it if it has flow:
+        let mut t = time_left;
+        if rate > 0 {
+            t -= 1
+        };
+
+        // Find total pressure released from opening this node:
+        let local_flow = rate * t;
+
+        // Add this node to the visited set:
+        let mut new_visited_nodes = visited_nodes.clone();
+        new_visited_nodes.insert(from_node);
+
+        // Look at the score for all neighbors, take the best:
+        let mut max_sub_score = 0;
+        let mut max_sub_visited = HashSet::new();
+
+        // Look at every major node as a possible next step:
+        for n in &available_nodes {
+            // Skip this node:
+            if from_node == *n {
+                continue;
+            }
+
+            let dist_n = self.get_shortest_path(from_node, *n);
+            let time = t - dist_n;
+
+            // Find the best we could do if we went to n next:
+            let (score, path) =
+                self.best_flow(*n, new_visited_nodes.clone(), time, available_nodes.clone());
+
+            // If this beats the previous best, use this instead:
+            if score > max_sub_score {
+                max_sub_score = score;
+                max_sub_visited = path;
             }
         }
-        Ok(())
-    }
-}
 
-impl Variant {
-    fn entrypoint(name: String) -> Variant {
-        Variant {
-            sequence: vec![Action::Start(name)],
-            opened: HashSet::new(),
-        }
-    }
-
-    fn cursor(&self) -> &String {
-        let last = self.sequence.last().unwrap();
-        match last {
-            Action::Start(name) => name,
-            Action::Open(name) => name,
-            Action::Move(name) => name,
-        }
-    }
-
-    fn extend(&self, action: Action) -> Variant {
-        let mut clone = self.clone();
-        clone.sequence.push(action);
-        clone
-    }
-
-    fn is_full(&self) -> bool {
-        self.sequence.len() as u32 == MINUTES + 1
-    }
-
-    fn open(&mut self, valve: &Valve) {
-        self.opened.insert(valve.id);
-    }
-
-    fn can_open(&self, valve: &Valve) -> bool {
-        // cannot open if its rate is 0
-        // cannot open if last action is Open
-
-        if valve.rate == 0 {
-            return false;
-        }
-
-        !self.opened.contains(&valve.id)
-
-        // let last = self.sequence.last().unwrap();
-        // match last {
-        //     Action::Open(_) => false,
-        //     _ => true,
-        // }
-    }
-
-    fn can_move_to(&self, valve: &Valve) -> bool {
-        // cannot move if last action is Move
-        // but can if that valve is zero rate
-
-        if valve.rate == 0 {
-            return true;
-        }
-
-        let last = self.sequence.last().unwrap();
-        match last {
-            Action::Move(_) => false,
-            _ => true,
-        }
-    }
-
-    fn is_valve_opened(&self, name: &String) -> bool {
-        for action in &self.sequence {
-            match action {
-                Action::Open(valve_name) => {
-                    if valve_name == name {
-                        return true;
-                    }
-                }
-                _ => continue,
-            }
-        }
-        false
-    }
-
-    fn released_pressure(&self, valves: &HashMap<String, &Valve>) -> i32 {
-        let mut pressure = 0i32;
-        // let mut minute = 0u32;
-
-        for (i, action) in self.sequence.iter().enumerate() {
-            match action {
-                Action::Move(_) => {
-                    // minute += 1;
-                }
-                Action::Open(name) => {
-                    let minutes_left = MINUTES as i32 - i as i32; 
-                    if minutes_left < 0 {
-                        return 0;
-                    }
-
-                    let valve = valves.get(name).unwrap();
-                    let rate = valve.rate;
-                    // minute += 1;
-                    // let minutes_left = M - minute;
-                    pressure += minutes_left * rate as i32;
-                }
-                Action::Start(_) => continue,
-            };
-        }
-        pressure
+        max_sub_visited.insert(from_node);
+        (local_flow + max_sub_score, max_sub_visited)
     }
 }
 
@@ -243,7 +155,7 @@ fn parse_row(row: String, id: usize) -> Valve {
         Regex::new(r"Valve ([\w]+) has flow rate=(\d+); tunnels? leads? to valves? (.*)").unwrap();
     let cap = pattern.captures(row.as_str()).unwrap();
     let name = cap.get(1).unwrap().as_str();
-    let rate = cap.get(2).unwrap().as_str().parse::<u32>().unwrap();
+    let rate = cap.get(2).unwrap().as_str().parse::<i32>().unwrap();
     let t: Vec<&str> = cap.get(3).unwrap().as_str().split(", ").collect();
     let tunnels = HashSet::<String>::from_iter(t.iter().map(|x| String::from(*x)));
 
@@ -271,87 +183,18 @@ fn read_input() -> Vec<Valve> {
     items
 }
 
-fn get_variants(
-    variant: Variant,
-    valves: &HashMap<String, &Valve>,
-    time_left: u32,
-) -> Vec<Variant> {
-    // end recursion if list of sequence is 30 + 1
-    if time_left == 0 {
-        return vec![variant];
-    }
-
-    let current = variant.cursor();
-    let valve = valves.get(current).unwrap();
-
-    let mut result = vec![];
-
-    // 1. open current valve branch
-    if variant.can_open(valve) {
-        let mut branch = variant.extend(Action::Open(current.clone()));
-        branch.open(valve);
-        for variant in get_variants(branch, valves, time_left - 1) {
-            result.push(variant);
-        }
-    }
-
-    // 2. move to others branch
-    for next in &valve.tunnels {
-        // let valve = valves.get(current).unwrap();
-        // if !variant.can_move_to(&valve) || variant.is_valve_opened(next) {
-        // if !variant.can_move_to(&valve) {
-        //     continue;
-        // }
-        let branch = variant.extend(Action::Move(next.clone()));
-        for variant in get_variants(branch, valves, time_left - 1) {
-            result.push(variant);
-        }
-    }
-
-    result
-}
-
-fn solve(valve: u32, valves_opened: u32, time_remaining: u32) -> u32 {
-    // auto key = U*R.size()*31*2 + p1*31*2 + time*2 + other_players;
-    let other_players = 0;
-    let key = valve * 20 * 31 * 2 + valve * 31 * 2 + time_remaining * 2 + other_players;
-    0
-}
-
 fn main() {
     let items = read_input();
-    let valves = HashMap::from_iter(items.iter().map(|v| (v.name.clone(), v)));
 
-    // let sys = System::new(&valves);
-    // println!("{:?}", sys.get_next("AA".to_string(), M));
-
-    let entrypoint = Variant::entrypoint("AA".to_string());
-    let variants = get_variants(entrypoint, &valves, MINUTES);
-
-    for variant in &variants {
-        let pressure = variant.released_pressure(&valves);
-        println!("{} = {}", variant, pressure);
-    }
-    println!("");
-
-    let best = variants.iter().max_by(|v1, v2| {
-        v1.released_pressure(&valves)
-            .cmp(&v2.released_pressure(&valves))
-    });
-    match best {
-        None => {}
-        Some(variant) => {
-            let pressure = variant.released_pressure(&valves);
-            println!("{}", variant);
-            println!("Result: {}", pressure);
-        }
-    }
+    let sys = System::new(&items);
+    let score = sys.solve_from(&"AA".to_string(), MINUTES);
+    println!("{}", score);
 }
 
 #[cfg(test)]
 mod tests {
     use std::{
-        collections::{HashMap, HashSet},
+        collections::HashSet,
         fs,
     };
 
