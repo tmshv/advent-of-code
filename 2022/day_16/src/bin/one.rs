@@ -100,13 +100,13 @@ impl System {
         // It costs a minute to open this valve:
         let valve = self.get_valve(&from_node);
         // Spend a minute to open it if it has flow:
-        let mut t = time_left;
+        let mut time_left = time_left;
         if valve.rate > 0 {
-            t -= 1
+            time_left -= 1
         };
 
         // Find total pressure released from opening this node:
-        let valve_flow = valve.rate * t;
+        let valve_flow = valve.rate * time_left;
 
         // Add this node to the visited set:
         let mut new_visited_nodes = visited_nodes.clone();
@@ -124,7 +124,7 @@ impl System {
             }
 
             let dist_n = self.get_shortest_path(from_node, *n);
-            let time = t - dist_n;
+            let time = time_left - dist_n;
 
             // Find the best we could do if we went to n next:
             let (score, path) =
