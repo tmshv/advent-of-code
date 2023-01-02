@@ -185,42 +185,13 @@ fn read_input() -> Vec<Jet> {
     }
 }
 
-fn display_grid(grid: &Vec<Vec<u8>>, shape: Option<&Shape>) {
-    for (i, row) in grid.iter().rev().enumerate() {
-        let y = grid.len() - i - 1;
-        print!("{:0>4} |", y);
-        for (x, value) in row.iter().enumerate() {
-            let mut pixel = match value {
-                0 => '.',
-                1 => '#',
-                _ => ' ',
-            };
-            match shape {
-                None => {}
-                Some(shape) => {
-                    if shape.include(x as i32, y as i32) {
-                        pixel = '@';
-                    }
-                }
-            }
-            print!("{}", pixel);
-        }
-        print!("|");
-        println!();
-    }
-    println!("     +-------+");
-}
-
 fn main() {
     let shapes = get_shapes();
     let mut shape_cycle = shapes.iter().cycle();
     let jets = read_input();
     let mut jet_cycle = jets.iter().cycle();
-
     let mut grid = Grid::new(7);
-
     let rocks = 2022;
-    // let rocks = 5;
     for _ in 0..rocks {
         // 1. get next shape
         let mut rock = shape_cycle.next().unwrap().clone();
@@ -245,10 +216,6 @@ fn main() {
         // 2. place this shape on the canvas
         rock.set_location(2, position);
 
-        // println!("The N rock begins falling {:?}:", rock.location);
-        // display_grid(&grid, Some(&rock));
-        // println!("");
-
         // 3. drop it with jet stream until it will be at the bottom
         loop {
             let jet = jet_cycle.next().unwrap();
@@ -266,19 +233,6 @@ fn main() {
                     }
                 }
             }
-            // let message = match jet {
-            //     Jet::Left => {
-            //         // "Jet of gas pushes rock left, but nothing happens:"
-            //         "Jet of gas pushes rock left:"
-            //     }
-            //     Jet::Right => {
-            //         "Jet of gas pushes rock right:"
-            //         // "Jet of gas pushes rock right, but nothing happens:"
-            //     }
-            // };
-            // println!("{}", message);
-            // display_grid(&grid, Some(&rock));
-            // println!("");
 
             rock.move_down();
             if rock.is_overlap(&grid.grid) {
@@ -286,21 +240,10 @@ fn main() {
 
                 grid.draw_shape(&rock);
 
-                // println!("Rock falls 1 unit, causing it to come to rest:");
-                // display_grid(&grid, None);
-                // println!("");
-
                 break;
             }
-            // println!("Rock falls 1 unit:");
-            // display_grid(&grid, Some(&rock));
-            // println!("");
         }
     }
-
-    // display
-    println!("Final:");
-    display_grid(&grid.grid, None);
 
     let top = grid.get_most_top();
     println!("Result: {}", top);
