@@ -1,12 +1,67 @@
-use std::{
-    fmt::Debug,
-    io,
-    vec,
-};
+use std::{fmt::Debug, io, vec};
 
 enum Jet {
     Left,
     Right,
+}
+
+// 7 |-------|
+// 6 |-------|
+// 5 |-------|
+// 4 |-------|
+// 3 |-------|
+// 2 |-------|
+// 1 |-------|
+// 0 |-------|
+//   +-------+
+#[derive(Debug)]
+struct Grid {
+    grid: Vec<Vec<u8>>,
+    width: u8,
+}
+
+impl Grid {
+    fn new(width: u8) -> Grid {
+        Grid {
+            grid: Vec::new(),
+            width,
+        }
+    }
+
+    fn height(&self) -> u32 {
+        self.grid.len() as u32
+    }
+
+    fn draw_shape(&mut self, shape: &Shape) {
+        for (x, y) in shape.iter_pixels() {
+            self.grid[y as usize][x as usize] = 1;
+        }
+    }
+
+    fn add_line(&mut self) {
+        let line = self.get_line();
+        self.grid.push(line);
+    }
+
+    fn get_line(&self) -> Vec<u8> {
+        let mut line = vec![];
+        for _ in 0..self.width {
+            line.push(0);
+        }
+        line
+    }
+
+    fn get_most_top(&self) -> u32 {
+        for (i, row) in self.grid.iter().rev().enumerate() {
+            let y = self.grid.len() - i;
+            for value in row {
+                if *value == 1 {
+                    return y as u32;
+                }
+            }
+        }
+        0
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -130,28 +185,6 @@ fn read_input() -> Vec<Jet> {
     }
 }
 
-fn get_line() -> Vec<u8> {
-    vec![0, 0, 0, 0, 0, 0, 0]
-}
-
-fn draw_shape(shape: &Shape, grid: &mut Vec<Vec<u8>>) {
-    for (x, y) in shape.iter_pixels() {
-        grid[y as usize][x as usize] = 1;
-    }
-}
-
-fn get_most_top(grid: &Vec<Vec<u8>>) -> i32 {
-    for (i, row) in grid.iter().rev().enumerate() {
-        let y = grid.len() - i;
-        for value in row {
-            if *value == 1 {
-                return y as i32;
-            }
-        }
-    }
-    0
-}
-
 fn display_grid(grid: &Vec<Vec<u8>>, shape: Option<&Shape>) {
     for (i, row) in grid.iter().rev().enumerate() {
         let y = grid.len() - i - 1;
@@ -184,16 +217,7 @@ fn main() {
     let jets = read_input();
     let mut jet_cycle = jets.iter().cycle();
 
-    // 7 |-------|
-    // 6 |-------|
-    // 5 |-------|
-    // 4 |-------|
-    // 3 |-------|
-    // 2 |-------|
-    // 1 |-------|
-    // 0 |-------|
-    //   +-------+
-    let mut grid: Vec<Vec<u8>> = vec![];
+    let mut grid = Grid::new(7);
 
     let rocks = 2022;
     // let rocks = 5;
@@ -204,15 +228,15 @@ fn main() {
         // 3. fill grid with empty rows
         // take the height of rock + 3 rows for the bottom or last pixel
         let height = rock.height();
-        let top = get_most_top(&grid);
-        let lines = grid.len() as i32;
+        let top = grid.get_most_top() as i32;
+        let lines = grid.height() as i32;
         let new_lines = (height + 3) - (lines - top);
         for _ in 0..new_lines {
-            grid.push(get_line());
+            grid.add_line();
         }
 
         // start Y coordinate of rock
-        let mut position = grid.len() as i32 - 1;
+        let mut position = grid.height() as i32 - 1;
         // substract |new_lines| if no new lines has pushed to the grid (rock will fail not from the top)
         if new_lines < 0 {
             position -= new_lines.abs();
@@ -231,13 +255,13 @@ fn main() {
             match jet {
                 Jet::Left => {
                     rock.move_left();
-                    if rock.is_overlap(&grid) {
+                    if rock.is_overlap(&grid.grid) {
                         rock.move_right();
                     }
                 }
                 Jet::Right => {
                     rock.move_right();
-                    if rock.is_overlap(&grid) {
+                    if rock.is_overlap(&grid.grid) {
                         rock.move_left();
                     }
                 }
@@ -257,10 +281,10 @@ fn main() {
             // println!("");
 
             rock.move_down();
-            if rock.is_overlap(&grid) {
+            if rock.is_overlap(&grid.grid) {
                 rock.move_up();
 
-                draw_shape(&rock, &mut grid);
+                grid.draw_shape(&rock);
 
                 // println!("Rock falls 1 unit, causing it to come to rest:");
                 // display_grid(&grid, None);
@@ -276,8 +300,8 @@ fn main() {
 
     // display
     println!("Final:");
-    display_grid(&grid, None);
+    display_grid(&grid.grid, None);
 
-    let top = get_most_top(&grid);
+    let top = grid.get_most_top();
     println!("Result: {}", top);
 }
