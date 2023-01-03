@@ -35,48 +35,9 @@ impl Grid {
         }
     }
 
-    // fn height(&self) -> u32 {
-    //     self.grid.len() as u32
-    // }
-
-    // fn shift(&mut self, steps: usize) {
-    //     self.grid.rotate_left(steps);
-
-    //     // let len = self.grid.len();
-
-    //     // self.grid[0..(len-steps)] = self.grid[steps..];
-    //     self.grid.splice(0..steps, vec![]);
-
-    //     // // for y in (0..len).rev().take(steps) {
-    //     // for y in (len - steps)..len {
-    //     //     self.grid[y] = self.get_line();
-    //     // }
-
-    //     self.shift += steps as u64;
-    //     self.top = None;
-    //     self.height = self.grid.len() as i32;
-    // }
-
     fn shift(&mut self, steps: usize) {
         self.shift += steps as u64;
-
         shift_vec(&mut self.grid, steps);
-
-        // move bottom part of grid down one by one
-        // self.grid.rotate_left(steps);
-        // for i in 0..steps {
-        //     let row = self.grid[i];
-        //     let next_row = self.grid[i + 1];
-        // }
-
-        // clear top of the grid
-        // let len = self.grid.len();
-        // let start = len - steps;
-        // let w = self.width as usize;
-        // for y in start..len {
-        //     for x in 0..w {
-        //         self.grid[y][x] = 0;
-        //     }
         self.top = None;
     }
 
@@ -297,8 +258,8 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
             }
         }
 
-        if steps > 90 {
-            grid.shift(1);
+        if top > 100 {
+            grid.shift(10);
         }
     }
 
@@ -320,17 +281,15 @@ fn main() {
 
 fn shift_vec(grid: &mut Vec<Vec<u8>>, steps: usize) {
     // move bottom part of grid down one by one
-    grid.rotate_left(steps);
-    // for i in 0..steps {
-    //     let row = self.grid[i];
-    //     let next_row = self.grid[i + 1];
-    // }
+    // grid.rotate_left(steps);
+    for i in 0..(grid.len() - steps) {
+        grid[i] = grid[i + steps].clone();
+    }
 
     // clear top of the grid
     let len = grid.len();
     let start = len - steps;
     let w = grid[0].len();
-    // let row = grid[0];
     for y in start..len {
         for x in 0..w {
             grid[y][x] = 0;
@@ -373,21 +332,21 @@ mod tests {
         assert_eq!(top, 3068);
     }
 
-    // #[test]
-    // fn test_1000000() {
-    //     let input = ">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>";
-    //     let jets = input
-    //         .chars()
-    //         .map(|value| match value {
-    //             '<' => Jet::Left,
-    //             '>' => Jet::Right,
-    //             _ => panic!("Wrong char"),
-    //         })
-    //         .collect::<Vec<Jet>>();
-    //     let top = solve(jets, 1_000_000);
+    #[test]
+    fn test_1000000() {
+        let input = ">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>";
+        let jets = input
+            .chars()
+            .map(|value| match value {
+                '<' => Jet::Left,
+                '>' => Jet::Right,
+                _ => panic!("Wrong char"),
+            })
+            .collect::<Vec<Jet>>();
+        let top = solve(jets, 1_000_000);
 
-    //     assert_eq!(top, 1514288);
-    // }
+        assert_eq!(top, 1514288);
+    }
 
     #[test]
     fn shift10() {
