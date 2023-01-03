@@ -18,6 +18,7 @@ enum Jet {
 struct Grid {
     grid: Vec<Vec<u8>>,
     width: u8,
+    top: Option<i32>,
 }
 
 impl Grid {
@@ -25,6 +26,7 @@ impl Grid {
         Grid {
             grid: Vec::new(),
             width,
+            top: None,
         }
     }
 
@@ -33,9 +35,15 @@ impl Grid {
     }
 
     fn draw_shape(&mut self, shape: &Shape) {
+        // let mut top = self.top;
         for (x, y) in shape.iter_pixels() {
+            // if y > self.top {
+            //     self.top = y;
+            // }
             self.grid[y as usize][x as usize] = 1;
         }
+        // self.top = top;
+        self.top = None;
     }
 
     fn add_line(&mut self) {
@@ -51,16 +59,24 @@ impl Grid {
         line
     }
 
-    fn get_most_top(&self) -> u32 {
-        for (i, row) in self.grid.iter().rev().enumerate() {
-            let y = self.grid.len() - i;
-            for value in row {
-                if *value == 1 {
-                    return y as u32;
+    fn get_most_top(&mut self) -> i32 {
+        match self.top {
+            Some(top) => top,
+            None => {
+                let mut top = 0;
+                'y: for (i, row) in self.grid.iter().rev().enumerate() {
+                    let y = self.grid.len() - i;
+                    for value in row {
+                        if *value == 1 {
+                            top = y as i32;
+                            break 'y;
+                        }
+                    }
                 }
-            }
+                self.top = Some(top);
+                top
+            },
         }
-        0
     }
 }
 
@@ -137,15 +153,11 @@ fn get_shapes() -> Vec<Shape> {
         // .#.
         // ###
         // .#.
-        Shape::new(
-            vec![(1, 0), (0, -1), (1, -1), (2, -1), (1, -2)],
-        ),
+        Shape::new(vec![(1, 0), (0, -1), (1, -1), (2, -1), (1, -2)]),
         // ..#
         // ..#
         // ###
-        Shape::new(
-            vec![(2, 0), (2, -1), (0, -2), (1, -2), (2, -2)],
-        ),
+        Shape::new(vec![(2, 0), (2, -1), (0, -2), (1, -2), (2, -2)]),
         // #
         // #
         // #
@@ -153,9 +165,7 @@ fn get_shapes() -> Vec<Shape> {
         Shape::new(vec![(0, 0), (0, -1), (0, -2), (0, -3)]),
         // ##
         // ##
-        Shape::new(
-            vec![(0, 0), (0, -1), (1, 0), (1, -1)],
-        ),
+        Shape::new(vec![(0, 0), (0, -1), (1, 0), (1, -1)]),
     ]
 }
 
@@ -187,7 +197,7 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
 
         // 3. fill grid with empty rows
         // take the height of rock + 3 rows for the bottom or last pixel
-        let top = grid.get_most_top() as i32;
+        let top = grid.get_most_top();
         let lines = grid.height() as i32;
         let new_lines = (rock.height + 3) - (lines - top);
         for _ in 0..new_lines {
@@ -238,8 +248,8 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
 }
 
 fn main() {
-    let rocks = 2022;
-    // let rocks = 1_000_000;
+    // let rocks = 2022;
+    let rocks = 1_000_000;
     let jets = read_input();
     let top = solve(jets, rocks);
     println!("Result: {}", top);
@@ -247,16 +257,19 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Jet, solve};
+    use crate::{solve, Jet};
 
     #[test]
     fn test_2022() {
         let input = ">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>";
-        let jets = input.chars().map(|value| match value {
+        let jets = input
+            .chars()
+            .map(|value| match value {
                 '<' => Jet::Left,
                 '>' => Jet::Right,
                 _ => panic!("Wrong char"),
-        }).collect::<Vec<Jet>>();
+            })
+            .collect::<Vec<Jet>>();
         let top = solve(jets, 2022);
 
         assert_eq!(top, 3068);
