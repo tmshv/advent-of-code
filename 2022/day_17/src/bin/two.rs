@@ -17,7 +17,7 @@ enum Jet {
 #[derive(Debug)]
 struct Grid {
     grid: [[u8; 7]; 60],
-    top: i32,
+    top: isize,
     shift: u64,
 }
 
@@ -111,7 +111,7 @@ impl Grid {
         }
 
         // decreate top
-        self.top -= steps as i32;
+        self.top -= steps as isize;
     }
 
     fn draw_shape(&mut self, shape: &Shape) {
@@ -123,7 +123,7 @@ impl Grid {
             self.grid[y][x] = 1;
         }
 
-        let top = top as i32;
+        let top = top as isize;
         if self.top < top {
             self.top = top;
         };
@@ -136,14 +136,14 @@ impl Grid {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct Shape {
-    location: (i32, i32),
-    data: [(i32, i32); 5],
-    height: i32,
-    right_border: i32,
+    location: (isize, isize),
+    data: [(isize, isize); 5],
+    height: isize,
+    right_border: isize,
 }
 
 impl Shape {
-    fn new(data: [(i32, i32); 5]) -> Shape {
+    fn new(data: [(isize, isize); 5]) -> Shape {
         let min_y = data.iter().map(|coord| coord.1).min().unwrap();
         let max_y = data.iter().map(|coord| coord.1).max().unwrap();
         let height = (max_y - min_y).abs() + 1;
@@ -156,12 +156,16 @@ impl Shape {
         }
     }
 
-    fn set_right_border(&mut self, border: i32) {
+    fn bottom(&self) -> isize {
+        self.location.1 + self.height - 1
+    }
+
+    fn set_right_border(&mut self, border: isize) {
         let width = 1 + self.data.iter().map(|coord| coord.0).max().unwrap();
         self.right_border = border - width;
     }
 
-    fn set_location(&mut self, x: i32, y: i32) {
+    fn set_location(&mut self, x: isize, y: isize) {
         self.location = (x, y);
     }
 
@@ -198,7 +202,7 @@ impl Shape {
     }
 }
 
-fn get_shapes(right_border: i32) -> Vec<Shape> {
+fn get_shapes(right_border: isize) -> Vec<Shape> {
     let mut result = vec![
         // ####
         Shape::new([(0, 0), (1, 0), (2, 0), (3, 0), (0, 0)]),
@@ -422,13 +426,13 @@ mod tests {
 
     #[test]
     fn get_shapes_height() {
-        let heights: Vec<i32> = get_shapes(7).iter().map(|shape| shape.height).collect();
+        let heights: Vec<isize> = get_shapes(7).iter().map(|shape| shape.height).collect();
         assert_eq!(heights, vec![1, 3, 3, 4, 2]);
     }
 
     #[test]
     fn get_shapes_right_border() {
-        let rb: Vec<i32> = get_shapes(7)
+        let rb: Vec<isize> = get_shapes(7)
             .iter()
             .map(|shape| shape.right_border)
             .collect();
