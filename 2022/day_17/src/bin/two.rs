@@ -210,25 +210,10 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
         // 1. get next shape
         let mut rock = shape_cycle.next().unwrap().clone();
 
-        // 3. fill grid with empty rows
+        // 2. fill grid with empty rows
         // take the height of rock + 3 rows for the bottom or last pixel
         let top = grid.get_most_top();
-
-        let new_lines = (rock.height + 3) - (grid.height - top);
-        if new_lines > 0 {
-            for _ in 0..new_lines {
-                grid.add_line();
-            }
-        }
-
-        // start Y coordinate of rock
-        let mut position = grid.height - 1;
-        // substract |new_lines| if no new lines has pushed to the grid (rock will fail not from the top)
-        if new_lines < 0 {
-            position -= new_lines.abs();
-        }
-
-        // 2. place this shape on the canvas
+        let position = top + rock.height + 2; // 2 means 3 pixels higher
         rock.set_location(2, position);
 
         // 3. drop it with jet stream until it will be at the bottom
