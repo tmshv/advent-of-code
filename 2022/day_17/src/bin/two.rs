@@ -244,7 +244,7 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
             }
         }
 
-        if top > 50 {
+        if top > 90 {
             grid.shift(10);
         }
     }
