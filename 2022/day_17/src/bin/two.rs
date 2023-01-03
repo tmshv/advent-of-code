@@ -25,14 +25,17 @@ struct Grid {
 
 impl Grid {
     fn new(width: i32, fill: usize) -> Grid {
-        Grid {
-            // grid: Vec::with_capacity(fill),
-            grid: Vec::new(),
+        let mut item = Grid {
+            grid: Vec::with_capacity(fill),
             width,
             height: 0,
             top: None,
             shift: 0,
+        };
+        for _ in 0..fill {
+            item.add_line();
         }
+        item
     }
 
     fn shift(&mut self, steps: usize) {
@@ -201,11 +204,7 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
     let mut jet_cycle = jets.iter().cycle();
 
     let mut grid = Grid::new(7, 100);
-    for _ in 0..100 {
-        grid.add_line();
-    }
-
-    for steps in 0..rocks {
+    for _ in 0..rocks {
         // 1. get next shape
         let mut rock = shape_cycle.next().unwrap().clone();
 
@@ -258,7 +257,7 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
             }
         }
 
-        if top > 100 {
+        if top > 50 {
             grid.shift(10);
         }
     }
