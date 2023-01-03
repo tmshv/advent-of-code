@@ -79,9 +79,6 @@ impl Grid {
             if y < 0 || y >= self.height {
                 return true;
             }
-            if x < 0 || x >= self.width {
-                return true;
-            }
             if self.grid[y as usize][x as usize] == 1 {
                 return true;
             }
@@ -95,6 +92,7 @@ struct Shape {
     location: (i32, i32),
     data: Vec<(i32, i32)>,
     height: i32,
+    right_border: i32,
 }
 
 impl Shape {
@@ -107,7 +105,13 @@ impl Shape {
             location: (0, 0),
             data,
             height,
+            right_border: 1_000_000,
         }
+    }
+
+    fn set_right_border(&mut self, border: i32) {
+        let width = 1 + self.data.iter().map(|coord| coord.0).max().unwrap();
+        self.right_border = border - width;
     }
 
     fn set_location(&mut self, x: i32, y: i32) {
@@ -123,11 +127,15 @@ impl Shape {
     }
 
     fn move_left(&mut self) {
-        self.location.0 -= 1;
+        if self.location.0 > 0 {
+            self.location.0 -= 1;
+        }
     }
 
     fn move_right(&mut self) {
-        self.location.0 += 1;
+        if self.location.0 < self.right_border {
+            self.location.0 += 1;
+        }
     }
 
     fn iter_pixels(&self) -> impl Iterator<Item = (i32, i32)> + '_ {
@@ -139,8 +147,8 @@ impl Shape {
     }
 }
 
-fn get_shapes() -> Vec<Shape> {
-    vec![
+fn get_shapes(right_border: i32) -> Vec<Shape> {
+    let mut result = vec![
         // ####
         Shape::new(vec![(0, 0), (1, 0), (2, 0), (3, 0)]),
         // .#.
@@ -159,7 +167,13 @@ fn get_shapes() -> Vec<Shape> {
         // ##
         // ##
         Shape::new(vec![(0, 0), (0, -1), (1, 0), (1, -1)]),
-    ]
+    ];
+
+    for shape in &mut result {
+        shape.set_right_border(right_border);
+    }
+
+    result
 }
 
 fn read_input() -> Vec<Jet> {
@@ -180,11 +194,12 @@ fn read_input() -> Vec<Jet> {
 }
 
 fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
-    let shapes = get_shapes();
+    let width = 7;
+    let shapes = get_shapes(width);
     let mut shape_cycle = shapes.iter().cycle();
     let mut jet_cycle = jets.iter().cycle();
 
-    let mut grid = Grid::new(7, 60);
+    let mut grid = Grid::new(width, 60); // 60 is optimal for performance
     for _ in 0..rocks {
         // 1. get next shape
         let mut rock = shape_cycle.next().unwrap().clone();
@@ -372,7 +387,16 @@ mod tests {
 
     #[test]
     fn get_shapes_height() {
-        let heights: Vec<i32> = get_shapes().iter().map(|shape| shape.height).collect();
+        let heights: Vec<i32> = get_shapes(7).iter().map(|shape| shape.height).collect();
         assert_eq!(heights, vec![1, 3, 3, 4, 2]);
+    }
+
+    #[test]
+    fn get_shapes_right_border() {
+        let rb: Vec<i32> = get_shapes(7)
+            .iter()
+            .map(|shape| shape.right_border)
+            .collect();
+        assert_eq!(rb, vec![3, 4, 4, 6, 5]);
     }
 }
