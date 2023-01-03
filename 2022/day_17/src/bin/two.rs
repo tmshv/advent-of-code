@@ -1,5 +1,7 @@
 use std::{fmt::Debug, io, vec};
 
+use moveslice::Moveslice;
+
 enum Jet {
     Left,
     Right,
@@ -91,24 +93,17 @@ impl Grid {
         }
     }
 
-    fn shift(&mut self, steps: usize) {
+    fn shift(&mut self) {
+        let steps = 10;
+
         // increment shift
         self.shift += steps as u64;
 
         // 0. move bottom part of grid down one by one
-        for i in 0..(self.grid.len() - steps) {
-            self.grid[i] = self.grid[i + steps];
-        }
+        self.grid.moveslice(10.., 0);
 
         // 1. clear top of the grid
-        let len = self.grid.len();
-        let start = len - steps;
-        let w = self.grid[0].len();
-        for y in start..len {
-            for x in 0..w {
-                self.grid[y][x] = 0;
-            }
-        }
+        self.grid[50..].fill([0, 0, 0, 0, 0, 0, 0]);
 
         // decreate top
         self.top -= steps as isize;
@@ -293,9 +288,8 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
             }
         }
 
-        let top = grid.top;
-        if top > 50 {
-            grid.shift(10);
+        if grid.top > 50 {
+            grid.shift();
         }
     }
 

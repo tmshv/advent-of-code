@@ -5,3 +5,12 @@ version = 3
 [[package]]
 name = "day_17"
 version = "0.1.0"
+dependencies = [
+ "moveslice",
+]
+
+[[package]]
+name = "moveslice"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23f6c0f9939049f3f4e606f3c5585c80b099d196f7306603482999ff9377d906"
