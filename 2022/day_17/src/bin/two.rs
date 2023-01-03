@@ -90,13 +90,13 @@ impl Grid {
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct Shape {
     location: (i32, i32),
-    data: Vec<(i32, i32)>,
+    data: [(i32, i32); 5],
     height: i32,
     right_border: i32,
 }
 
 impl Shape {
-    fn new(data: Vec<(i32, i32)>) -> Shape {
+    fn new(data: [(i32, i32); 5]) -> Shape {
         let min_y = data.iter().map(|coord| coord.1).min().unwrap();
         let max_y = data.iter().map(|coord| coord.1).max().unwrap();
         let height = (max_y - min_y).abs() + 1;
@@ -150,23 +150,23 @@ impl Shape {
 fn get_shapes(right_border: i32) -> Vec<Shape> {
     let mut result = vec![
         // ####
-        Shape::new(vec![(0, 0), (1, 0), (2, 0), (3, 0)]),
+        Shape::new([(0, 0), (1, 0), (2, 0), (3, 0), (0, 0)]),
         // .#.
         // ###
         // .#.
-        Shape::new(vec![(1, 0), (0, -1), (1, -1), (2, -1), (1, -2)]),
+        Shape::new([(1, 0), (0, -1), (1, -1), (2, -1), (1, -2)]),
         // ..#
         // ..#
         // ###
-        Shape::new(vec![(2, 0), (2, -1), (0, -2), (1, -2), (2, -2)]),
+        Shape::new([(2, 0), (2, -1), (0, -2), (1, -2), (2, -2)]),
         // #
         // #
         // #
         // #
-        Shape::new(vec![(0, 0), (0, -1), (0, -2), (0, -3)]),
+        Shape::new([(0, 0), (0, -1), (0, -2), (0, -3), (0, 0)]),
         // ##
         // ##
-        Shape::new(vec![(0, 0), (0, -1), (1, 0), (1, -1)]),
+        Shape::new([(0, 0), (0, -1), (1, 0), (1, -1), (0, 0)]),
     ];
 
     for shape in &mut result {
