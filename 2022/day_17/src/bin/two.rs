@@ -122,21 +122,17 @@ impl Grid {
             if y >= top {
                 top = y + 1;
             }
-            self.grid[y as usize][x as usize] = 1;
+            self.grid[y][x] = 1;
         }
 
+        let top = top as i32;
         if self.top < top {
             self.top = top;
         };
     }
 
     fn contains(&self, shape: &Shape) -> bool {
-        for (x, y) in shape.iter_pixels() {
-            if self.grid[y as usize][x as usize] == 1 {
-                return true;
-            }
-        }
-        false
+        shape.iter_pixels().any(|(x, y)| self.grid[y][x] == 1)
     }
 }
 
@@ -195,11 +191,11 @@ impl Shape {
         }
     }
 
-    fn iter_pixels(&self) -> impl Iterator<Item = (i32, i32)> + '_ {
+    fn iter_pixels(&self) -> impl Iterator<Item = (usize, usize)> + '_ {
         let iter = self
             .data
             .iter()
-            .map(|(x, y)| (self.location.0 + x, self.location.1 + y));
+            .map(|(x, y)| ((self.location.0 + x) as usize, (self.location.1 + y) as usize));
         iter
     }
 }
