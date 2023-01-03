@@ -95,6 +95,23 @@ impl Grid {
             }
         }
     }
+
+    fn contains(&self, shape: &Shape) -> bool {
+        // let height = grid.len() as i32;
+        // let width = grid[0].len() as i32;
+        for (x, y) in shape.iter_pixels() {
+            if y < 0 || y >= self.height {
+                return true;
+            }
+            if x < 0 || x >= self.width {
+                return true;
+            }
+            if self.grid[y as usize][x as usize] == 1 {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -143,23 +160,6 @@ impl Shape {
             .iter()
             .map(|(x, y)| (self.location.0 + x, self.location.1 + y));
         iter
-    }
-
-    fn is_overlap(&self, grid: &Vec<Vec<u8>>) -> bool {
-        let height = grid.len() as i32;
-        let width = grid[0].len() as i32;
-        for (x, y) in self.iter_pixels() {
-            if y < 0 || y >= height {
-                return true;
-            }
-            if x < 0 || x >= width {
-                return true;
-            }
-            if grid[y as usize][x as usize] == 1 {
-                return true;
-            }
-        }
-        false
     }
 }
 
@@ -225,20 +225,20 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
             match jet {
                 Jet::Left => {
                     rock.move_left();
-                    if rock.is_overlap(&grid.grid) {
+                    if grid.contains(&rock) {
                         rock.move_right();
                     }
                 }
                 Jet::Right => {
                     rock.move_right();
-                    if rock.is_overlap(&grid.grid) {
+                    if grid.contains(&rock) {
                         rock.move_left();
                     }
                 }
             }
 
             rock.move_down();
-            if rock.is_overlap(&grid.grid) {
+            if grid.contains(&rock) {
                 rock.move_up();
 
                 grid.draw_shape(&rock);
