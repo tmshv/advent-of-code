@@ -94,8 +94,25 @@ impl Grid {
     }
 
     fn shift(&mut self, steps: usize) {
+        // increment shift
         self.shift += steps as u64;
-        shift_vec(&mut self.grid, steps);
+
+        // 0. move bottom part of grid down one by one
+        for i in 0..(self.grid.len() - steps) {
+            self.grid[i] = self.grid[i + steps];
+        }
+
+        // 1. clear top of the grid
+        let len = self.grid.len();
+        let start = len - steps;
+        let w = self.grid[0].len();
+        for y in start..len {
+            for x in 0..w {
+                self.grid[y][x] = 0;
+            }
+        }
+
+        // decreate top
         self.top -= steps as i32;
     }
 
@@ -298,40 +315,24 @@ fn main() {
     println!("Result: {} ({})", top, top == 1553686);
 }
 
-fn shift_vec(grid: &mut [[u8; 7]; 60], steps: usize) {
-    // move bottom part of grid down one by one
-    for i in 0..(grid.len() - steps) {
-        grid[i] = grid[i + steps];
-    }
-
-    // clear top of the grid
-    let len = grid.len();
-    let start = len - steps;
-    let w = grid[0].len();
-    for y in start..len {
-        for x in 0..w {
-            grid[y][x] = 0;
-        }
-    }
-}
 #[cfg(test)]
 mod tests {
-    use crate::{get_shapes, shift_vec, solve, Jet};
+    use crate::{get_shapes, solve, Jet};
 
-    fn from_strs(rows: Vec<String>) -> Vec<Vec<u8>> {
-        rows.iter()
-            .rev()
-            .map(|row| {
-                row.chars()
-                    .map(|c| match c {
-                        '.' => 0,
-                        '#' => 1,
-                        _ => 0,
-                    })
-                    .collect()
-            })
-            .collect()
-    }
+    // fn from_strs(rows: Vec<String>) -> Vec<Vec<u8>> {
+    //     rows.iter()
+    //         .rev()
+    //         .map(|row| {
+    //             row.chars()
+    //                 .map(|c| match c {
+    //                     '.' => 0,
+    //                     '#' => 1,
+    //                     _ => 0,
+    //                 })
+    //                 .collect()
+    //         })
+    //         .collect()
+    // }
 
     #[test]
     fn test_2022() {
