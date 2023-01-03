@@ -115,9 +115,6 @@ impl Grid {
 
     fn contains(&self, shape: &Shape) -> bool {
         for (x, y) in shape.iter_pixels() {
-            if y < 0 || y >= self.height {
-                return true;
-            }
             if self.grid[y as usize][x as usize] == 1 {
                 return true;
             }
@@ -157,8 +154,12 @@ impl Shape {
         self.location = (x, y);
     }
 
-    fn move_down(&mut self) {
-        self.location.1 -= 1;
+    fn move_down(&mut self) -> bool {
+        if self.location.1 > 0 {
+            self.location.1 -= 1;
+            return true;
+        }
+        false
     }
 
     fn move_up(&mut self) {
@@ -265,9 +266,11 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
                 }
             }
 
-            rock.move_down();
-            if grid.contains(&rock) {
-                rock.move_up();
+            let failing = rock.move_down();
+            if !failing || grid.contains(&rock) {
+                if failing {
+                    rock.move_up();
+                }
 
                 grid.draw_shape(&rock);
 
