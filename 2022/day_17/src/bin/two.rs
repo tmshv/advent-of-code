@@ -48,14 +48,17 @@ impl Grid {
     }
 
     fn draw_shape(&mut self, shape: &Shape) {
-        // let mut top = self.top;
+        // let mut top = match self.top {
+        //     None => 0,
+        //     Some(top) => top,
+        // };
         for (x, y) in shape.iter_pixels() {
-            // if y > self.top {
-            //     self.top = y;
+            // if y > top {
+            //     top = y;
             // }
             self.grid[y as usize][x as usize] = 1;
         }
-        // self.top = top;
+        // self.top = Some(top);
         self.top = None;
     }
 
@@ -267,7 +270,6 @@ fn main() {
 
 fn shift_vec(grid: &mut Vec<Vec<u8>>, steps: usize) {
     // move bottom part of grid down one by one
-    // grid.rotate_left(steps);
     for i in 0..(grid.len() - steps) {
         grid[i] = grid[i + steps].clone();
     }
