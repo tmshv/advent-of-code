@@ -71,7 +71,6 @@ impl Grid {
     }
 
     fn get_most_top(&mut self) -> i32 {
-        self.top = None;
         match self.top {
             Some(top) => top,
             None => {
