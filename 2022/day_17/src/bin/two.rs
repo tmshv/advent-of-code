@@ -41,7 +41,10 @@ impl Grid {
     fn shift(&mut self, steps: usize) {
         self.shift += steps as u64;
         shift_vec(&mut self.grid, steps);
-        self.top = None;
+        self.top = match self.top {
+            None => None,
+            Some(top) => Some(top - steps as i32),
+        }
     }
 
     fn draw_shape(&mut self, shape: &Shape) {
