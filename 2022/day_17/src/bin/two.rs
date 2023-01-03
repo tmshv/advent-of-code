@@ -17,7 +17,6 @@ enum Jet {
 #[derive(Debug)]
 struct Grid {
     grid: [[u8; 7]; 60],
-    height: i32,
     top: i32,
     shift: u64,
 }
@@ -87,7 +86,6 @@ impl Grid {
                 [0, 0, 0, 0, 0, 0, 0],
                 [0, 0, 0, 0, 0, 0, 0],
             ],
-            height: 60,
             top: 0,
             shift: 0,
         }
