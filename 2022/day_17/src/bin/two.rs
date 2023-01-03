@@ -184,7 +184,7 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
     let mut shape_cycle = shapes.iter().cycle();
     let mut jet_cycle = jets.iter().cycle();
 
-    let mut grid = Grid::new(7, 100);
+    let mut grid = Grid::new(7, 80);
     for _ in 0..rocks {
         // 1. get next shape
         let mut rock = shape_cycle.next().unwrap().clone();
@@ -223,7 +223,7 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
         }
 
         let top = grid.top;
-        if top > 90 {
+        if top > 70 {
             grid.shift(10);
         }
     }
