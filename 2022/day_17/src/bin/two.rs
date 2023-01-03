@@ -68,26 +68,24 @@ impl Grid {
 struct Shape {
     location: (i32, i32),
     data: Vec<(i32, i32)>,
+    height: i32,
 }
 
 impl Shape {
+    fn new(data: Vec<(i32, i32)>) -> Shape {
+        let min_y = data.iter().map(|coord| coord.1).min().unwrap();
+        let max_y = data.iter().map(|coord| coord.1).max().unwrap();
+        let height = (max_y - min_y).abs() + 1;
+
+        Shape {
+            location: (0, 0),
+            data,
+            height,
+        }
+    }
+
     fn set_location(&mut self, x: i32, y: i32) {
         self.location = (x, y);
-    }
-
-    fn include(&self, x: i32, y: i32) -> bool {
-        for (px, py) in self.iter_pixels() {
-            if px == x && py == y {
-                return true;
-            }
-        }
-        false
-    }
-
-    fn height(&self) -> i32 {
-        let min_y = self.data.iter().map(|coord| coord.1).min().unwrap();
-        let max_y = self.data.iter().map(|coord| coord.1).max().unwrap();
-        (max_y - min_y).abs() + 1
     }
 
     fn move_down(&mut self) {
@@ -133,38 +131,29 @@ impl Shape {
 fn get_shapes() -> Vec<Shape> {
     vec![
         // ####
-        Shape {
-            location: (0, 0),
-            data: vec![(0, 0), (1, 0), (2, 0), (3, 0)],
-        },
+        Shape::new(vec![(0, 0), (1, 0), (2, 0), (3, 0)]),
         // .#.
         // ###
         // .#.
-        Shape {
-            location: (0, 0),
-            data: vec![(1, 0), (0, -1), (1, -1), (2, -1), (1, -2)],
-        },
+        Shape::new(
+            vec![(1, 0), (0, -1), (1, -1), (2, -1), (1, -2)],
+        ),
         // ..#
         // ..#
         // ###
-        Shape {
-            location: (0, 0),
-            data: vec![(2, 0), (2, -1), (0, -2), (1, -2), (2, -2)],
-        },
+        Shape::new(
+            vec![(2, 0), (2, -1), (0, -2), (1, -2), (2, -2)],
+        ),
         // #
         // #
         // #
         // #
-        Shape {
-            location: (0, 0),
-            data: vec![(0, 0), (0, -1), (0, -2), (0, -3)],
-        },
+        Shape::new(vec![(0, 0), (0, -1), (0, -2), (0, -3)]),
         // ##
         // ##
-        Shape {
-            location: (0, 0),
-            data: vec![(0, 0), (0, -1), (1, 0), (1, -1)],
-        },
+        Shape::new(
+            vec![(0, 0), (0, -1), (1, 0), (1, -1)],
+        ),
     ]
 }
 
@@ -185,23 +174,20 @@ fn read_input() -> Vec<Jet> {
     }
 }
 
-fn main() {
+fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
     let shapes = get_shapes();
     let mut shape_cycle = shapes.iter().cycle();
-    let jets = read_input();
     let mut jet_cycle = jets.iter().cycle();
     let mut grid = Grid::new(7);
-    let rocks = 2022;
     for _ in 0..rocks {
         // 1. get next shape
         let mut rock = shape_cycle.next().unwrap().clone();
 
         // 3. fill grid with empty rows
         // take the height of rock + 3 rows for the bottom or last pixel
-        let height = rock.height();
         let top = grid.get_most_top() as i32;
         let lines = grid.height() as i32;
-        let new_lines = (height + 3) - (lines - top);
+        let new_lines = (rock.height + 3) - (lines - top);
         for _ in 0..new_lines {
             grid.add_line();
         }
@@ -246,5 +232,31 @@ fn main() {
     }
 
     let top = grid.get_most_top();
+    top as u64
+}
+
+fn main() {
+    let rocks = 2022;
+    // let rocks = 1_000_000;
+    let jets = read_input();
+    let top = solve(jets, rocks);
     println!("Result: {}", top);
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{Jet, solve};
+
+    #[test]
+    fn test_2022() {
+        let input = ">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>";
+        let jets = input.chars().map(|value| match value {
+                '<' => Jet::Left,
+                '>' => Jet::Right,
+                _ => panic!("Wrong char"),
+        }).collect::<Vec<Jet>>();
+        let top = solve(jets, 2022);
+
+        assert_eq!(top, 3068);
+    }
 }
