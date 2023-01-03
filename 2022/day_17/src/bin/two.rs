@@ -73,8 +73,6 @@ impl Grid {
     }
 
     fn contains(&self, shape: &Shape) -> bool {
-        // let height = grid.len() as i32;
-        // let width = grid[0].len() as i32;
         for (x, y) in shape.iter_pixels() {
             if y < 0 || y >= self.height {
                 return true;
@@ -274,24 +272,24 @@ fn shift_vec(grid: &mut Vec<Vec<u8>>, steps: usize) {
     }
 }
 
-fn from_strs(rows: Vec<String>) -> Vec<Vec<u8>> {
-    rows.iter()
-        .rev()
-        .map(|row| {
-            row.chars()
-                .map(|c| match c {
-                    '.' => 0,
-                    '#' => 1,
-                    _ => 0,
-                })
-                .collect()
-        })
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::{from_strs, get_shapes, shift_vec, solve, Jet};
+    use crate::{get_shapes, shift_vec, solve, Jet};
+
+    fn from_strs(rows: Vec<String>) -> Vec<Vec<u8>> {
+        rows.iter()
+            .rev()
+            .map(|row| {
+                row.chars()
+                    .map(|c| match c {
+                        '.' => 0,
+                        '#' => 1,
+                        _ => 0,
+                    })
+                    .collect()
+            })
+            .collect()
+    }
 
     #[test]
     fn test_2022() {
