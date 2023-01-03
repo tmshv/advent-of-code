@@ -20,21 +20,65 @@ struct Grid {
     width: i32,
     height: i32,
     top: Option<i32>,
+    shift: u64,
 }
 
 impl Grid {
     fn new(width: i32, fill: usize) -> Grid {
         Grid {
-            grid: Vec::with_capacity(fill),
+            // grid: Vec::with_capacity(fill),
+            grid: Vec::new(),
             width,
             height: 0,
             top: None,
+            shift: 0,
         }
     }
 
     // fn height(&self) -> u32 {
     //     self.grid.len() as u32
     // }
+
+    // fn shift(&mut self, steps: usize) {
+    //     self.grid.rotate_left(steps);
+
+    //     // let len = self.grid.len();
+
+    //     // self.grid[0..(len-steps)] = self.grid[steps..];
+    //     self.grid.splice(0..steps, vec![]);
+
+    //     // // for y in (0..len).rev().take(steps) {
+    //     // for y in (len - steps)..len {
+    //     //     self.grid[y] = self.get_line();
+    //     // }
+
+    //     self.shift += steps as u64;
+    //     self.top = None;
+    //     self.height = self.grid.len() as i32;
+    // }
+
+    fn shift(&mut self, steps: usize) {
+        self.shift += steps as u64;
+
+        shift_vec(&mut self.grid, steps);
+
+        // move bottom part of grid down one by one
+        // self.grid.rotate_left(steps);
+        // for i in 0..steps {
+        //     let row = self.grid[i];
+        //     let next_row = self.grid[i + 1];
+        // }
+
+        // clear top of the grid
+        // let len = self.grid.len();
+        // let start = len - steps;
+        // let w = self.width as usize;
+        // for y in start..len {
+        //     for x in 0..w {
+        //         self.grid[y][x] = 0;
+        //     }
+        self.top = None;
+    }
 
     fn draw_shape(&mut self, shape: &Shape) {
         // let mut top = self.top;
@@ -63,6 +107,7 @@ impl Grid {
     }
 
     fn get_most_top(&mut self) -> i32 {
+        self.top = None;
         match self.top {
             Some(top) => top,
             None => {
@@ -194,18 +239,19 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
     let mut shape_cycle = shapes.iter().cycle();
     let mut jet_cycle = jets.iter().cycle();
 
-    let mut grid = Grid::new(7, 1000);
-    for _ in 0..1000 {
+    let mut grid = Grid::new(7, 100);
+    for _ in 0..100 {
         grid.add_line();
     }
 
-    for _ in 0..rocks {
+    for steps in 0..rocks {
         // 1. get next shape
         let mut rock = shape_cycle.next().unwrap().clone();
 
         // 3. fill grid with empty rows
         // take the height of rock + 3 rows for the bottom or last pixel
         let top = grid.get_most_top();
+
         let new_lines = (rock.height + 3) - (grid.height - top);
         if new_lines > 0 {
             for _ in 0..new_lines {
@@ -250,23 +296,66 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
                 break;
             }
         }
+
+        if steps > 90 {
+            grid.shift(1);
+        }
     }
 
     let top = grid.get_most_top();
-    top as u64
+    // top as u64
+    grid.shift + top as u64
 }
 
 fn main() {
     // let rocks = 2022;
     let rocks = 1_000_000;
+
     let jets = read_input();
     let top = solve(jets, rocks);
-    println!("Result: {}", top);
+
+    // println!("Result: {} ({})", top, top == 3153);
+    println!("Result: {} ({})", top, top == 1553686);
+}
+
+fn shift_vec(grid: &mut Vec<Vec<u8>>, steps: usize) {
+    // move bottom part of grid down one by one
+    grid.rotate_left(steps);
+    // for i in 0..steps {
+    //     let row = self.grid[i];
+    //     let next_row = self.grid[i + 1];
+    // }
+
+    // clear top of the grid
+    let len = grid.len();
+    let start = len - steps;
+    let w = grid[0].len();
+    // let row = grid[0];
+    for y in start..len {
+        for x in 0..w {
+            grid[y][x] = 0;
+        }
+    }
+}
+
+fn from_strs(rows: Vec<String>) -> Vec<Vec<u8>> {
+    rows.iter()
+        .rev()
+        .map(|row| {
+            row.chars()
+                .map(|c| match c {
+                    '.' => 0,
+                    '#' => 1,
+                    _ => 0,
+                })
+                .collect()
+        })
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{solve, Jet};
+    use crate::{from_strs, shift_vec, solve, Jet};
 
     #[test]
     fn test_2022() {
@@ -282,5 +371,81 @@ mod tests {
         let top = solve(jets, 2022);
 
         assert_eq!(top, 3068);
+    }
+
+    // #[test]
+    // fn test_1000000() {
+    //     let input = ">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>";
+    //     let jets = input
+    //         .chars()
+    //         .map(|value| match value {
+    //             '<' => Jet::Left,
+    //             '>' => Jet::Right,
+    //             _ => panic!("Wrong char"),
+    //         })
+    //         .collect::<Vec<Jet>>();
+    //     let top = solve(jets, 1_000_000);
+
+    //     assert_eq!(top, 1514288);
+    // }
+
+    #[test]
+    fn shift10() {
+        let mut grid = from_strs(vec![
+            ".......".to_string(),
+            ".......".to_string(),
+            ".......".to_string(),
+            "....#..".to_string(),
+            "....#..".to_string(),
+            "....##.".to_string(),
+            "##..##.".to_string(),
+            "######.".to_string(),
+            ".###...".to_string(),
+            "..#....".to_string(),
+            ".####..".to_string(),
+            "....##.".to_string(),
+            "....##.".to_string(),
+            "....#..".to_string(),
+            "..#.#..".to_string(),
+            "..#.#..".to_string(),
+            "#####..".to_string(),
+            "..###..".to_string(),
+            "...#...".to_string(),
+            "..####.".to_string(),
+        ]);
+        let result = from_strs(vec![
+            ".......".to_string(),
+            ".......".to_string(),
+            ".......".to_string(),
+            ".......".to_string(),
+            ".......".to_string(),
+            ".......".to_string(),
+            ".......".to_string(),
+            ".......".to_string(),
+            ".......".to_string(),
+            ".......".to_string(),
+            ".......".to_string(),
+            ".......".to_string(),
+            ".......".to_string(),
+            "....#..".to_string(),
+            "....#..".to_string(),
+            "....##.".to_string(),
+            "##..##.".to_string(),
+            "######.".to_string(),
+            ".###...".to_string(),
+            "..#....".to_string(),
+            // ".####..".to_string(),
+            // "....##.".to_string(),
+            // "....##.".to_string(),
+            // "....#..".to_string(),
+            // "..#.#..".to_string(),
+            // "..#.#..".to_string(),
+            // "#####..".to_string(),
+            // "..###..".to_string(),
+            // "...#...".to_string(),
+            // "..####.".to_string(),
+        ]);
+        shift_vec(&mut grid, 10);
+        assert_eq!(grid, result);
     }
 }
