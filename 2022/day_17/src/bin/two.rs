@@ -19,7 +19,7 @@ struct Grid {
     grid: Vec<Vec<u8>>,
     width: i32,
     height: i32,
-    top: Option<i32>,
+    top: i32,
     shift: u64,
 }
 
@@ -29,7 +29,7 @@ impl Grid {
             grid: Vec::with_capacity(fill),
             width,
             height: 0,
-            top: None,
+            top: 0,
             shift: 0,
         };
         for _ in 0..fill {
@@ -41,25 +41,21 @@ impl Grid {
     fn shift(&mut self, steps: usize) {
         self.shift += steps as u64;
         shift_vec(&mut self.grid, steps);
-        self.top = match self.top {
-            None => None,
-            Some(top) => Some(top - steps as i32),
-        }
+        self.top -= steps as i32;
     }
 
     fn draw_shape(&mut self, shape: &Shape) {
-        // let mut top = match self.top {
-        //     None => 0,
-        //     Some(top) => top,
-        // };
+        let mut top = 0;
         for (x, y) in shape.iter_pixels() {
-            // if y > top {
-            //     top = y;
-            // }
+            if y >= top {
+                top = y + 1;
+            }
             self.grid[y as usize][x as usize] = 1;
         }
-        // self.top = Some(top);
-        self.top = None;
+
+        if self.top < top {
+            self.top = top;
+        };
     }
 
     fn add_line(&mut self) {
@@ -74,26 +70,6 @@ impl Grid {
             line.push(0);
         }
         line
-    }
-
-    fn get_most_top(&mut self) -> i32 {
-        match self.top {
-            Some(top) => top,
-            None => {
-                let mut top = 0;
-                'y: for (i, row) in self.grid.iter().rev().enumerate() {
-                    let y = self.grid.len() - i;
-                    for value in row {
-                        if *value == 1 {
-                            top = y as i32;
-                            break 'y;
-                        }
-                    }
-                }
-                self.top = Some(top);
-                top
-            }
-        }
     }
 
     fn contains(&self, shape: &Shape) -> bool {
@@ -215,8 +191,7 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
 
         // 2. fill grid with empty rows
         // take the height of rock + 3 rows for the bottom or last pixel
-        let top = grid.get_most_top();
-        let position = top + rock.height + 2; // 2 means 3 pixels higher
+        let position = grid.top + rock.height + 2; // 2 means 3 pixels higher
         rock.set_location(2, position);
 
         // 3. drop it with jet stream until it will be at the bottom
@@ -247,14 +222,13 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
             }
         }
 
+        let top = grid.top;
         if top > 90 {
             grid.shift(10);
         }
     }
 
-    let top = grid.get_most_top();
-    // top as u64
-    grid.shift + top as u64
+    grid.shift + grid.top as u64
 }
 
 fn main() {
