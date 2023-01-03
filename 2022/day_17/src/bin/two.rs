@@ -113,11 +113,13 @@ impl Shape {
     }
 
     fn is_overlap(&self, grid: &Vec<Vec<u8>>) -> bool {
+        let height = grid.len() as i32;
+        let width = grid[0].len() as i32;
         for (x, y) in self.iter_pixels() {
-            if y < 0 || y >= grid.len() as i32 {
+            if y < 0 || y >= height {
                 return true;
             }
-            if x < 0 || x >= grid[0].len() as i32 {
+            if x < 0 || x >= width {
                 return true;
             }
             if grid[y as usize][x as usize] == 1 {
