@@ -302,7 +302,7 @@ fn from_strs(rows: Vec<String>) -> Vec<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{from_strs, shift_vec, solve, Jet};
+    use crate::{from_strs, get_shapes, shift_vec, solve, Jet};
 
     #[test]
     fn test_2022() {
@@ -394,5 +394,11 @@ mod tests {
         ]);
         shift_vec(&mut grid, 10);
         assert_eq!(grid, result);
+    }
+
+    #[test]
+    fn get_shapes_height() {
+        let heights: Vec<i32> = get_shapes().iter().map(|shape| shape.height).collect();
+        assert_eq!(heights, vec![1, 3, 3, 4, 2]);
     }
 }
