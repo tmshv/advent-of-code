@@ -17,22 +17,24 @@ enum Jet {
 #[derive(Debug)]
 struct Grid {
     grid: Vec<Vec<u8>>,
-    width: u8,
+    width: i32,
+    height: i32,
     top: Option<i32>,
 }
 
 impl Grid {
-    fn new(width: u8) -> Grid {
+    fn new(width: i32, fill: usize) -> Grid {
         Grid {
-            grid: Vec::new(),
+            grid: Vec::with_capacity(fill),
             width,
+            height: 0,
             top: None,
         }
     }
 
-    fn height(&self) -> u32 {
-        self.grid.len() as u32
-    }
+    // fn height(&self) -> u32 {
+    //     self.grid.len() as u32
+    // }
 
     fn draw_shape(&mut self, shape: &Shape) {
         // let mut top = self.top;
@@ -49,6 +51,7 @@ impl Grid {
     fn add_line(&mut self) {
         let line = self.get_line();
         self.grid.push(line);
+        self.height += 1;
     }
 
     fn get_line(&self) -> Vec<u8> {
@@ -75,7 +78,7 @@ impl Grid {
                 }
                 self.top = Some(top);
                 top
-            },
+            }
         }
     }
 }
@@ -190,7 +193,12 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
     let shapes = get_shapes();
     let mut shape_cycle = shapes.iter().cycle();
     let mut jet_cycle = jets.iter().cycle();
-    let mut grid = Grid::new(7);
+
+    let mut grid = Grid::new(7, 1000);
+    for _ in 0..1000 {
+        grid.add_line();
+    }
+
     for _ in 0..rocks {
         // 1. get next shape
         let mut rock = shape_cycle.next().unwrap().clone();
@@ -198,14 +206,15 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
         // 3. fill grid with empty rows
         // take the height of rock + 3 rows for the bottom or last pixel
         let top = grid.get_most_top();
-        let lines = grid.height() as i32;
-        let new_lines = (rock.height + 3) - (lines - top);
-        for _ in 0..new_lines {
-            grid.add_line();
+        let new_lines = (rock.height + 3) - (grid.height - top);
+        if new_lines > 0 {
+            for _ in 0..new_lines {
+                grid.add_line();
+            }
         }
 
         // start Y coordinate of rock
-        let mut position = grid.height() as i32 - 1;
+        let mut position = grid.height - 1;
         // substract |new_lines| if no new lines has pushed to the grid (rock will fail not from the top)
         if new_lines < 0 {
             position -= new_lines.abs();
