@@ -58,17 +58,14 @@ impl Grid {
         self.grid[50..].fill(0);
 
         // decreate top
-        // if self.high_index >= 10 {
         self.high_index -= 10;
-        // }
     }
 
     fn draw_shape(&mut self, shape: &Shape) {
         for (y, row) in shape.iter_rows() {
             self.grid[y] = row | self.grid[y];
         }
-        let h = shape.height - 1;
-        let top = shape.location.1 + h;
+        let top = shape.location.1 + shape.height;
         if top > self.high_index {
             self.high_index = top;
         }
@@ -95,7 +92,7 @@ struct Shape {
 
 impl Shape {
     fn new(width: usize, data: [u8; 4]) -> Shape {
-        let height = data.iter().filter(|row| **row != 0).count();
+        let height = data.iter().filter(|row| **row != 0).count() - 1;
 
         Shape {
             location: (0, 0),
@@ -114,12 +111,10 @@ impl Shape {
         self.location = (x, y);
     }
 
-    fn move_down(&mut self) -> bool {
+    fn move_down(&mut self) {
         if self.location.1 > 0 {
             self.location.1 -= 1;
-            return true;
         }
-        false
     }
 
     fn move_up(&mut self) {
@@ -139,7 +134,7 @@ impl Shape {
     }
 
     fn iter_rows(&self) -> impl Iterator<Item = (usize, u8)> + '_ {
-        self.data[0..self.height]
+        self.data[0..=self.height]
             .iter()
             .enumerate()
             .map(|(i, row)| (self.location.1 + i, row >> self.location.0))
@@ -180,10 +175,6 @@ fn get_shapes(right_border: usize) -> Vec<Shape> {
                 0b0010000, // ..#
                 0b0010000, // ###
                 0b0000000, // unused
-                // 0b0010000, // ..#
-                // 0b0010000, // ..#
-                // 0b1110000, // ###
-                // 0b0000000, // unused
             ],
         ),
         // #
@@ -242,7 +233,7 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> Grid {
     let mut jet_cycle = jets.iter().cycle();
 
     let mut grid = Grid::new(None);
-    for i in 0..rocks {
+    for _ in 0..rocks {
         // if i % 1_000_000_000 == 0 {
         // println!("{}", i);
         // }
@@ -252,10 +243,8 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> Grid {
 
         // 2. fill grid with empty rows
         // take the height of rock + 3 rows for the bottom or last pixel
-        let position = grid.high_index + 1 + 3;
+        let position = grid.high_index + 4; // 3 from task + 1 cause counting starts from 0
         rock.set_location(2, position);
-
-        // println!("rock {} will start from {:?}", i, rock.location);
 
         // 3. drop it with jet stream until it will be at the bottom
         loop {
@@ -282,8 +271,6 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> Grid {
                 break;
             }
         }
-
-        // println!("top: {}", grid.high_index);
 
         if grid.high_index > 50 {
             grid.shift();
@@ -415,7 +402,7 @@ mod tests {
             0b1111110, // 13
             0b0111000, // 12
             0b0010000, // 11
-            0b0111100, // 10 
+            0b0111100, // 10
             0b0000110, // 09
             0b0000110, // 08
             0b0000100, // 07
@@ -531,7 +518,8 @@ mod tests {
     #[test]
     fn get_shapes_height() {
         let heights: Vec<usize> = get_shapes(7).iter().map(|shape| shape.height).collect();
-        assert_eq!(heights, vec![1, 3, 3, 4, 2]);
+        assert_eq!(heights, vec![0, 2, 2, 3, 1]); // indices not actual height
+        // assert_eq!(heights, vec![1, 3, l, 4, 2]);
     }
 
     #[test]
