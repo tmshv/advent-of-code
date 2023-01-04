@@ -37,41 +37,25 @@ impl Grid {
     }
 
     fn shift(&mut self) {
-        let steps = 10;
-
         // increment shift
-        self.shift += steps as u64;
+        self.shift += 10;
 
         // 0. move bottom part of grid down one by one
-        // self.grid.moveslice(10.., 0);
         self.grid.moveslice(10.., 0);
 
         // 1. clear top of the grid
-        // self.grid[50..].fill([0, 0, 0, 0, 0, 0, 0]);
         self.grid[50..].fill(0);
 
         // decreate top
-        if self.high_index >= steps {
-            self.high_index -= steps;
-        }
+        self.high_index -= 10;
     }
 
     fn draw_shape(&mut self, shape: &Shape) {
-        // let mut top = 0;
         for (y, row) in shape.iter_rows() {
             self.grid[y] = row | self.grid[y];
-
-            // if (y + 1) > top {
-            //     top = y + 1;
-            // }
         }
-
-        // let top = top as isize;
-        // if top > self.top {
-        //     self.top = top;
-        // };
-        if shape.location.1 as isize > self.high_index {
-            self.high_index = shape.location.1 as isize;
+        if shape.location.1 > self.high_index {
+            self.high_index = shape.location.1;
         }
     }
 
@@ -88,16 +72,16 @@ impl Grid {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct Shape {
-    location: (usize, usize),
+    location: (isize, isize),
     data: [u8; 4],
-    width: usize,
-    height: usize,
-    right_border: usize,
+    width: isize,
+    height: isize,
+    right_border: isize,
 }
 
 impl Shape {
-    fn new(width: usize, data: [u8; 4]) -> Shape {
-        let height = data.iter().filter(|row| **row != 0).count();
+    fn new(width: isize, data: [u8; 4]) -> Shape {
+        let height = data.iter().filter(|row| **row != 0).count() as isize;
 
         Shape {
             location: (0, 0),
@@ -108,11 +92,11 @@ impl Shape {
         }
     }
 
-    fn set_right_border(&mut self, border: usize) {
+    fn set_right_border(&mut self, border: isize) {
         self.right_border = border - self.width;
     }
 
-    fn set_location(&mut self, x: usize, y: usize) {
+    fn set_location(&mut self, x: isize, y: isize) {
         self.location = (x, y);
     }
 
@@ -144,18 +128,13 @@ impl Shape {
         self.data
             .iter()
             .enumerate()
-            .map(|(i, row)| {
-                (
-                    self.location.1 as isize - i as isize,
-                    row >> self.location.0,
-                )
-            })
+            .map(|(i, row)| (self.location.1 - i as isize, row >> self.location.0))
             .filter(|(i, _)| *i >= 0)
             .map(|(y, row)| (y as usize, row))
     }
 }
 
-fn get_shapes(right_border: usize) -> Vec<Shape> {
+fn get_shapes(right_border: isize) -> Vec<Shape> {
     let mut result = vec![
         // ####
         Shape::new(
@@ -247,14 +226,18 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> Grid {
     let mut jet_cycle = jets.iter().cycle();
 
     let mut grid = Grid::new(None);
-    for _ in 0..rocks {
+    for i in 0..rocks {
+        // if i % 1_000_000_000 == 0 {
+        // println!("{}", i);
+        // }
+
         // 1. get next shape
         let mut rock = shape_cycle.next().unwrap().clone();
 
         // 2. fill grid with empty rows
         // take the height of rock + 3 rows for the bottom or last pixel
-        let position = grid.high_index + rock.height as isize + 3; // 2 means 3 pixels higher
-        rock.set_location(2, position as usize);
+        let position = grid.high_index + rock.height + 3; // 2 means 3 pixels higher
+        rock.set_location(2, position);
 
         // 3. drop it with jet stream until it will be at the bottom
         loop {
@@ -300,6 +283,7 @@ fn main() {
     // let rocks = 2022;
     let rocks = 1_000_000;
     // let rocks = 1_000_000_000;
+    // let rocks = 1_000_000_000_000;
 
     let jets = read_input();
     let grid = solve(jets, rocks);
@@ -308,6 +292,7 @@ fn main() {
     // println!("Result: {} ({})", top, top == 3153);
     println!("Result: {} ({})", top, top == 1553686);
     // println!("Result: {} ({})", top, top == 1553665705);
+    // println!("Result: {}", top);
 }
 
 #[cfg(test)]
@@ -514,19 +499,19 @@ mod tests {
 
     #[test]
     fn get_shapes_widths() {
-        let widths: Vec<usize> = get_shapes(7).iter().map(|shape| shape.width).collect();
+        let widths: Vec<isize> = get_shapes(7).iter().map(|shape| shape.width).collect();
         assert_eq!(widths, vec![4, 3, 3, 1, 2]);
     }
 
     #[test]
     fn get_shapes_height() {
-        let heights: Vec<usize> = get_shapes(7).iter().map(|shape| shape.height).collect();
+        let heights: Vec<isize> = get_shapes(7).iter().map(|shape| shape.height).collect();
         assert_eq!(heights, vec![1, 3, 3, 4, 2]);
     }
 
     #[test]
     fn get_shapes_right_border() {
-        let rb: Vec<usize> = get_shapes(7)
+        let rb: Vec<isize> = get_shapes(7)
             .iter()
             .map(|shape| shape.right_border)
             .collect();
