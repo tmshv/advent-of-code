@@ -126,20 +126,16 @@ impl Shape {
         self.location.1 += 1;
     }
 
-    fn move_left(&mut self) -> bool {
+    fn move_left(&mut self) {
         if self.location.0 > 0 {
             self.location.0 -= 1;
-            return true;
         }
-        false
     }
 
-    fn move_right(&mut self) -> bool {
+    fn move_right(&mut self) {
         if self.location.0 < self.right_border {
             self.location.0 += 1;
-            return true;
         }
-        false
     }
 
     fn iter_rows(&self) -> impl Iterator<Item = (usize, u8)> + '_ {
@@ -259,30 +255,20 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> Grid {
         let position = grid.high_index + 1 + 3;
         rock.set_location(2, position);
 
-        println!("rock {} will start from {:?}", i, rock.location);
+        // println!("rock {} will start from {:?}", i, rock.location);
 
         // 3. drop it with jet stream until it will be at the bottom
         loop {
             let jet = jet_cycle.next().unwrap();
             match jet {
                 Jet::Left => {
-                    if rock.move_left() {
-                        println!("move {:?}", jet);
-                    } else {
-                        // rock.move_right();
-                        println!("move {:?} but nothing has happened", jet);
-                    }
+                    rock.move_left();
                     if grid.contains(&rock) {
                         rock.move_right();
                     }
                 }
                 Jet::Right => {
-                    if rock.move_right() {
-                        println!("move {:?}", jet);
-                    } else {
-                        // rock.move_left();
-                        println!("move {:?} but nothing has happened", jet);
-                    }
+                    rock.move_right();
                     if grid.contains(&rock) {
                         rock.move_left();
                     }
@@ -291,17 +277,13 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> Grid {
 
             rock.move_down();
             if grid.contains(&rock) {
-                println!("move down causing it to ground");
                 rock.move_up();
-
                 grid.draw_shape(&rock);
                 break;
-            } else {
-                println!("move down");
             }
         }
 
-        println!("top: {}", grid.high_index);
+        // println!("top: {}", grid.high_index);
 
         if grid.high_index > 50 {
             grid.shift();
@@ -317,9 +299,9 @@ fn part_two(grid: &Grid) -> u64 {
 fn main() {
     // let rocks = 2022;
     // let rocks = 1_000_000;
-    // let rocks = 1_000_000_000;
+    let rocks = 1_000_000_000;
     // let rocks = 1_000_000_000_000;
-    let rocks = 10;
+    // let rocks = 10;
 
     let jets = read_input();
     let grid = solve(jets, rocks);
@@ -327,15 +309,15 @@ fn main() {
 
     // println!("Result: {} ({})", top, top == 3153);
     // println!("Result: {} ({})", top, top == 1553686);
-    // println!("Result: {} ({})", top, top == 1553665705);
-    println!("Result: {}", top);
+    println!("Result: {} ({})", top, top == 1553665705);
+    // println!("Result: {}", top);
 
-    for i in grid.grid.iter().rev() {
-        if *i == 0 {
-            continue;
-        }
-        println!("{:#09b}", i);
-    }
+    // for i in grid.grid.iter().rev() {
+    //     if *i == 0 {
+    //         continue;
+    //     }
+    //     println!("{:#09b}", i);
+    // }
 }
 
 #[cfg(test)]
