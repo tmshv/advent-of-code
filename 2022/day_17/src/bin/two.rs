@@ -18,77 +18,20 @@ enum Jet {
 //   +-------+
 #[derive(Debug)]
 struct Grid {
-    grid: [[u8; 7]; 60],
-    top: isize,
+    grid: [u8; 60],
+    high_index: isize,
     shift: u64,
 }
 
 impl Grid {
-    fn new() -> Grid {
+    fn new(grid: Option<[u8; 60]>) -> Grid {
+        let grid = match grid {
+            None => [0; 60],
+            Some(grid) => grid,
+        };
         Grid {
-            grid: [
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0],
-            ],
-            top: 0,
+            grid,
+            high_index: -1,
             shift: 0,
         }
     }
@@ -100,67 +43,76 @@ impl Grid {
         self.shift += steps as u64;
 
         // 0. move bottom part of grid down one by one
+        // self.grid.moveslice(10.., 0);
         self.grid.moveslice(10.., 0);
 
         // 1. clear top of the grid
-        self.grid[50..].fill([0, 0, 0, 0, 0, 0, 0]);
+        // self.grid[50..].fill([0, 0, 0, 0, 0, 0, 0]);
+        self.grid[50..].fill(0);
 
         // decreate top
-        self.top -= steps as isize;
+        if self.high_index >= steps {
+            self.high_index -= steps;
+        }
     }
 
     fn draw_shape(&mut self, shape: &Shape) {
-        let mut top = 0;
-        for (x, y) in shape.iter_pixels() {
-            if y >= top {
-                top = y + 1;
-            }
-            self.grid[y][x] = 1;
+        // let mut top = 0;
+        for (y, row) in shape.iter_rows() {
+            self.grid[y] = row | self.grid[y];
+
+            // if (y + 1) > top {
+            //     top = y + 1;
+            // }
         }
 
-        let top = top as isize;
-        if self.top < top {
-            self.top = top;
-        };
+        // let top = top as isize;
+        // if top > self.top {
+        //     self.top = top;
+        // };
+        if shape.location.1 as isize > self.high_index {
+            self.high_index = shape.location.1 as isize;
+        }
     }
 
     fn contains(&self, shape: &Shape) -> bool {
-        shape.iter_pixels().any(|(x, y)| self.grid[y][x] == 1)
+        for (y, row) in shape.iter_rows() {
+            let intersect = row & self.grid[y] > 0;
+            if intersect {
+                return true;
+            }
+        }
+        false
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct Shape {
-    location: (isize, isize),
-    data: [(isize, isize); 5],
-    height: isize,
-    right_border: isize,
+    location: (usize, usize),
+    data: [u8; 4],
+    width: usize,
+    height: usize,
+    right_border: usize,
 }
 
 impl Shape {
-    fn new(data: [(isize, isize); 5]) -> Shape {
-        let min_y = data.iter().map(|coord| coord.1).min().unwrap();
-        let max_y = data.iter().map(|coord| coord.1).max().unwrap();
-        let height = (max_y - min_y).abs() + 1;
+    fn new(width: usize, data: [u8; 4]) -> Shape {
+        let height = data.iter().filter(|row| **row != 0).count();
 
         Shape {
             location: (0, 0),
-            data,
+            width,
             height,
+            data,
             right_border: 1_000_000,
         }
     }
 
-    fn bottom(&self) -> isize {
-        self.location.1 + self.height - 1
+    fn set_right_border(&mut self, border: usize) {
+        self.right_border = border - self.width;
     }
 
-    fn set_right_border(&mut self, border: isize) {
-        let width = 1 + self.data.iter().map(|coord| coord.0).max().unwrap();
-        self.right_border = border - width;
-    }
-
-    fn set_location(&mut self, x: isize, y: isize) {
+    fn set_location(&mut self, x: usize, y: usize) {
         self.location = (x, y);
     }
 
@@ -188,35 +140,81 @@ impl Shape {
         }
     }
 
-    fn iter_pixels(&self) -> impl Iterator<Item = (usize, usize)> + '_ {
-        let iter = self
-            .data
+    fn iter_rows(&self) -> impl Iterator<Item = (usize, u8)> + '_ {
+        self.data
             .iter()
-            .map(|(x, y)| ((self.location.0 + x) as usize, (self.location.1 + y) as usize));
-        iter
+            .enumerate()
+            .map(|(i, row)| {
+                (
+                    self.location.1 as isize - i as isize,
+                    row >> self.location.0,
+                )
+            })
+            .filter(|(i, _)| *i >= 0)
+            .map(|(y, row)| (y as usize, row))
     }
 }
 
-fn get_shapes(right_border: isize) -> Vec<Shape> {
+fn get_shapes(right_border: usize) -> Vec<Shape> {
     let mut result = vec![
         // ####
-        Shape::new([(0, 0), (1, 0), (2, 0), (3, 0), (0, 0)]),
+        Shape::new(
+            4,
+            [
+                0b1111000, // ####...
+                0b0000000, // unused
+                0b0000000, // unused
+                0b0000000, // unused
+            ],
+        ),
         // .#.
         // ###
         // .#.
-        Shape::new([(1, 0), (0, -1), (1, -1), (2, -1), (1, -2)]),
+        Shape::new(
+            3,
+            [
+                0b0100000, // .#.
+                0b1110000, // ###
+                0b0100000, // .#.
+                0b0000000, // unused
+            ],
+        ),
         // ..#
         // ..#
         // ###
-        Shape::new([(2, 0), (2, -1), (0, -2), (1, -2), (2, -2)]),
+        Shape::new(
+            3,
+            [
+                0b0010000, // ..#
+                0b0010000, // ..#
+                0b1110000, // ###
+                0b0000000, // unused
+            ],
+        ),
         // #
         // #
         // #
         // #
-        Shape::new([(0, 0), (0, -1), (0, -2), (0, -3), (0, 0)]),
+        Shape::new(
+            1,
+            [
+                0b1000000, // #
+                0b1000000, // #
+                0b1000000, // #
+                0b1000000, // #
+            ],
+        ),
         // ##
         // ##
-        Shape::new([(0, 0), (0, -1), (1, 0), (1, -1), (0, 0)]),
+        Shape::new(
+            2,
+            [
+                0b1100000, // ##
+                0b1100000, // ##
+                0b0000000, // unused
+                0b0000000, // unused
+            ],
+        ),
     ];
 
     for shape in &mut result {
@@ -243,20 +241,20 @@ fn read_input() -> Vec<Jet> {
     }
 }
 
-fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
+fn solve(jets: Vec<Jet>, rocks: u64) -> Grid {
     let shapes = get_shapes(7);
     let mut shape_cycle = shapes.iter().cycle();
     let mut jet_cycle = jets.iter().cycle();
 
-    let mut grid = Grid::new();
+    let mut grid = Grid::new(None);
     for _ in 0..rocks {
         // 1. get next shape
         let mut rock = shape_cycle.next().unwrap().clone();
 
         // 2. fill grid with empty rows
         // take the height of rock + 3 rows for the bottom or last pixel
-        let position = grid.top + rock.height + 2; // 2 means 3 pixels higher
-        rock.set_location(2, position);
+        let position = grid.high_index + rock.height as isize + 3; // 2 means 3 pixels higher
+        rock.set_location(2, position as usize);
 
         // 3. drop it with jet stream until it will be at the bottom
         loop {
@@ -283,48 +281,146 @@ fn solve(jets: Vec<Jet>, rocks: u64) -> u64 {
                 }
 
                 grid.draw_shape(&rock);
-
                 break;
             }
         }
 
-        if grid.top > 50 {
+        if grid.high_index > 50 {
             grid.shift();
         }
     }
+    grid
+}
 
-    grid.shift + grid.top as u64
+fn part_two(grid: &Grid) -> u64 {
+    grid.shift + grid.high_index as u64 + 1 // 1 cause index starts from 0
 }
 
 fn main() {
     // let rocks = 2022;
     let rocks = 1_000_000;
+    // let rocks = 1_000_000_000;
 
     let jets = read_input();
-    let top = solve(jets, rocks);
+    let grid = solve(jets, rocks);
+    let top = part_two(&grid);
 
     // println!("Result: {} ({})", top, top == 3153);
     println!("Result: {} ({})", top, top == 1553686);
+    // println!("Result: {} ({})", top, top == 1553665705);
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{get_shapes, solve, Jet};
+    use crate::{get_shapes, part_two, solve, Grid, Jet, Shape};
 
-    // fn from_strs(rows: Vec<String>) -> Vec<Vec<u8>> {
-    //     rows.iter()
-    //         .rev()
-    //         .map(|row| {
-    //             row.chars()
-    //                 .map(|c| match c {
-    //                     '.' => 0,
-    //                     '#' => 1,
-    //                     _ => 0,
-    //                 })
-    //                 .collect()
-    //         })
-    //         .collect()
-    // }
+    #[test]
+    fn test_1() {
+        let input = ">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>";
+        let jets = input
+            .chars()
+            .map(|value| match value {
+                '<' => Jet::Left,
+                '>' => Jet::Right,
+                _ => panic!("Wrong char"),
+            })
+            .collect::<Vec<Jet>>();
+        let grid = solve(jets, 1);
+        let top = part_two(&grid);
+        assert_eq!(top, 1);
+    }
+
+    #[test]
+    fn test_2() {
+        let input = ">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>";
+        let jets = input
+            .chars()
+            .map(|value| match value {
+                '<' => Jet::Left,
+                '>' => Jet::Right,
+                _ => panic!("Wrong char"),
+            })
+            .collect::<Vec<Jet>>();
+        let grid = solve(jets, 2);
+        let top = part_two(&grid);
+        assert_eq!(top, 4);
+
+        let mut result: [u8; 60] = [
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, // 19
+            0b0000000, // 18
+            0b0000000, // 17
+            0b0000000, // 16
+            0b0000000, // 15
+            0b0000000, // 14
+            0b0000000, // 13
+            0b0000000, // 12
+            0b0000000, // 11
+            0b0000000, // 10
+            0b0000000, // 09
+            0b0000000, // 08
+            0b0000000, // 07
+            0b0000000, // 06
+            0b0000000, // 05
+            0b0000000, // 04
+            0b0001000, // 03
+            0b0011100, // 02
+            0b0001000, // 01
+            0b0011110, // 00
+        ];
+        result.reverse();
+        assert_eq!(grid.grid, result);
+    }
+
+    #[test]
+    fn test_10() {
+        let input = ">>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>";
+        let jets = input
+            .chars()
+            .map(|value| match value {
+                '<' => Jet::Left,
+                '>' => Jet::Right,
+                _ => panic!("Wrong char"),
+            })
+            .collect::<Vec<Jet>>();
+        let grid = solve(jets, 10);
+        let top = part_two(&grid);
+        assert_eq!(top, 17);
+
+        let mut result: [u8; 60] = [
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, // 19
+            0b0000000, // 18
+            0b0000000, // 17
+            0b0000100, // 16
+            0b0000100, // 15
+            0b0000110, // 14
+            0b1100110, // 13
+            0b1111110, // 12
+            0b0111000, // 11
+            0b0010000, // 10
+            0b0111100, // 09
+            0b0000110, // 08
+            0b0000110, // 07
+            0b0000100, // 06
+            0b0010100, // 05
+            0b0010100, // 04
+            0b1111100, // 03
+            0b0011100, // 02
+            0b0001000, // 01
+            0b0011110, // 00
+        ];
+        result.reverse();
+        assert_eq!(grid.grid, result);
+    }
 
     #[test]
     fn test_2022() {
@@ -337,8 +433,8 @@ mod tests {
                 _ => panic!("Wrong char"),
             })
             .collect::<Vec<Jet>>();
-        let top = solve(jets, 2022);
-
+        let grid = solve(jets, 2022);
+        let top = part_two(&grid);
         assert_eq!(top, 3068);
     }
 
@@ -353,83 +449,356 @@ mod tests {
                 _ => panic!("Wrong char"),
             })
             .collect::<Vec<Jet>>();
-        let top = solve(jets, 1_000_000);
-
+        let grid = solve(jets, 1_000_000);
+        let top = part_two(&grid);
         assert_eq!(top, 1514288);
     }
 
-    // #[test]
-    // fn shift10() {
-    //     let mut grid = from_strs(vec![
-    //         ".......".to_string(),
-    //         ".......".to_string(),
-    //         ".......".to_string(),
-    //         "....#..".to_string(),
-    //         "....#..".to_string(),
-    //         "....##.".to_string(),
-    //         "##..##.".to_string(),
-    //         "######.".to_string(),
-    //         ".###...".to_string(),
-    //         "..#....".to_string(),
-    //         ".####..".to_string(),
-    //         "....##.".to_string(),
-    //         "....##.".to_string(),
-    //         "....#..".to_string(),
-    //         "..#.#..".to_string(),
-    //         "..#.#..".to_string(),
-    //         "#####..".to_string(),
-    //         "..###..".to_string(),
-    //         "...#...".to_string(),
-    //         "..####.".to_string(),
-    //     ]);
-    //     let result = from_strs(vec![
-    //         ".......".to_string(),
-    //         ".......".to_string(),
-    //         ".......".to_string(),
-    //         ".......".to_string(),
-    //         ".......".to_string(),
-    //         ".......".to_string(),
-    //         ".......".to_string(),
-    //         ".......".to_string(),
-    //         ".......".to_string(),
-    //         ".......".to_string(),
-    //         ".......".to_string(),
-    //         ".......".to_string(),
-    //         ".......".to_string(),
-    //         "....#..".to_string(),
-    //         "....#..".to_string(),
-    //         "....##.".to_string(),
-    //         "##..##.".to_string(),
-    //         "######.".to_string(),
-    //         ".###...".to_string(),
-    //         "..#....".to_string(),
-    //         // ".####..".to_string(),
-    //         // "....##.".to_string(),
-    //         // "....##.".to_string(),
-    //         // "....#..".to_string(),
-    //         // "..#.#..".to_string(),
-    //         // "..#.#..".to_string(),
-    //         // "#####..".to_string(),
-    //         // "..###..".to_string(),
-    //         // "...#...".to_string(),
-    //         // "..####.".to_string(),
-    //     ]);
-    //     shift_vec(&mut grid, 10);
-    //     assert_eq!(grid, result);
-    // }
+    #[test]
+    fn shift10() {
+        let mut matrix: [u8; 60] = [
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0011100, // 19
+            0b0001000, // 18
+            0b0001000, // 17
+            0b0001111, // 16
+            0b0010001, // 15
+            0b0000111, // 14
+            0b0111100, // 13
+            0b0100011, // 12
+            0b1110011, // 11
+            0b0100110, // 10
+            0b0000110, // 09
+            0b0010110, // 08
+            0b0001110, // 07
+            0b0011111, // 06
+            0b0010000, // 05
+            0b1110000, // 04
+            0b0111100, // 03
+            0b0100000, // 02
+            0b1110000, // 01
+            0b0111110, // 00
+        ];
+        matrix.reverse();
+        let mut grid = Grid::new(Some(matrix));
+        assert_eq!(grid.shift, 0);
+        grid.shift();
+
+        let mut result: [u8; 60] = [
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, // ...
+            0b0011100, // 19
+            0b0001000, // 18
+            0b0001000, // 17
+            0b0001111, // 16
+            0b0010001, // 15
+            0b0000111, // 14
+            0b0111100, // 13
+            0b0100011, // 12
+            0b1110011, // 11
+            0b0100110, // 10
+        ];
+        result.reverse();
+        assert_eq!(grid.grid, result);
+        assert_eq!(grid.shift, 10);
+    }
+
+    #[test]
+    fn get_shapes_widths() {
+        let widths: Vec<usize> = get_shapes(7).iter().map(|shape| shape.width).collect();
+        assert_eq!(widths, vec![4, 3, 3, 1, 2]);
+    }
 
     #[test]
     fn get_shapes_height() {
-        let heights: Vec<isize> = get_shapes(7).iter().map(|shape| shape.height).collect();
+        let heights: Vec<usize> = get_shapes(7).iter().map(|shape| shape.height).collect();
         assert_eq!(heights, vec![1, 3, 3, 4, 2]);
     }
 
     #[test]
     fn get_shapes_right_border() {
-        let rb: Vec<isize> = get_shapes(7)
+        let rb: Vec<usize> = get_shapes(7)
             .iter()
             .map(|shape| shape.right_border)
             .collect();
         assert_eq!(rb, vec![3, 4, 4, 6, 5]);
+    }
+
+    #[test]
+    fn binary_ops() {
+        assert_eq!(0b1111000 >> 0, 0b1111000);
+        assert_eq!(0b0001111 << 2, 0b0111100);
+        assert_eq!(0b0001111 >> 2, 0b0000011);
+        assert_eq!(0b0001111 & 0b0011000, 0b0001000);
+    }
+
+    #[test]
+    fn shape_move_right() {
+        let mut shape = Shape::new(
+            3,
+            [
+                0b0100000, // .#.
+                0b1110000, // ###
+                0b0100000, // .#.
+                0b0000000, // unused
+            ],
+        );
+        shape.set_right_border(7);
+        shape.set_location(0, 9);
+        assert_eq!(
+            shape.iter_rows().collect::<Vec<(usize, u8)>>(),
+            vec![
+                (9, 0b0100000),
+                (8, 0b1110000),
+                (7, 0b0100000),
+                (6, 0b0000000),
+            ]
+        );
+
+        shape.move_right();
+        assert_eq!(
+            shape.iter_rows().collect::<Vec<(usize, u8)>>(),
+            vec![
+                (9, 0b0010000),
+                (8, 0b0111000),
+                (7, 0b0010000),
+                (6, 0b0000000),
+            ]
+        );
+
+        shape.move_right();
+        assert_eq!(
+            shape.iter_rows().collect::<Vec<(usize, u8)>>(),
+            vec![
+                (9, 0b0001000),
+                (8, 0b0011100),
+                (7, 0b0001000),
+                (6, 0b0000000),
+            ]
+        );
+
+        shape.move_right();
+        shape.move_right();
+        shape.move_right();
+        assert_eq!(
+            shape.iter_rows().collect::<Vec<(usize, u8)>>(),
+            vec![
+                (9, 0b0000010),
+                (8, 0b0000111),
+                (7, 0b0000010),
+                (6, 0b0000000),
+            ]
+        );
+    }
+    #[test]
+    fn shape_apply_location() {
+        let mut shape = Shape::new(4, [0b1111000, 0b0000000, 0b0000000, 0b0000000]);
+        shape.set_location(1, 0);
+        assert_eq!(
+            shape.iter_rows().collect::<Vec<(usize, u8)>>(),
+            vec![
+                (0, 0b0111100),
+                // (1, 0b0000000),
+                // (2, 0b0000000),
+                // (3, 0b0000000),
+            ]
+        );
+        shape.set_location(3, 8);
+        assert_eq!(
+            shape.iter_rows().collect::<Vec<(usize, u8)>>(),
+            vec![
+                (8, 0b0001111),
+                (7, 0b0000000),
+                (6, 0b0000000),
+                (5, 0b0000000),
+            ]
+        );
+
+        let mut shape = Shape::new(
+            3,
+            [
+                0b0100000, // .#.
+                0b1110000, // ###
+                0b0100000, // .#.
+                0b0000000, // unused
+            ],
+        );
+        shape.set_location(2, 5);
+        assert_eq!(
+            shape.iter_rows().collect::<Vec<(usize, u8)>>(),
+            vec![
+                (5, 0b0001000),
+                (4, 0b0011100),
+                (3, 0b0001000),
+                (2, 0b0000000),
+            ]
+        );
+    }
+
+    #[test]
+    fn grid_draw() {
+        let mut grid = Grid::new(Some([
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000,
+        ]));
+        let mut shape = Shape::new(
+            4,
+            [
+                0b1111000, // ####...
+                0b0000000, // unused
+                0b0000000, // unused
+                0b0000000, // unused
+            ],
+        );
+        shape.set_location(1, 3);
+        grid.draw_shape(&shape);
+
+        shape.set_location(3, 6);
+        grid.draw_shape(&shape);
+
+        let mut shape = Shape::new(
+            3,
+            [
+                0b0100000, // .#.
+                0b1110000, // ###
+                0b0100000, // .#.
+                0b0000000, // unused
+            ],
+        );
+        shape.set_location(0, 2);
+        grid.draw_shape(&shape);
+
+        let mut result: [u8; 60] = [
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, // ...
+            0b0000000, // 9
+            0b0000000, // 8
+            0b0000000, // 7
+            0b0001111, // 6
+            0b0000000, // 5
+            0b0000000, // 4
+            0b0111100, // 3
+            0b0100000, // 2
+            0b1110000, // 1
+            0b0100000, // 0
+        ];
+        result.reverse();
+        assert_eq!(grid.grid, result);
+    }
+
+    #[test]
+    fn grid_contains() {
+        let mut matrix: [u8; 60] = [
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, // ...
+            0b0011000, // 9
+            0b0011000, // 8
+            0b0111100, // 7
+            0b0010000, // 6
+            0b0010000, // 5
+            0b1110001, // 4
+            0b0000011, // 3
+            0b0000111, // 2
+            0b0001111, // 1
+            0b1111111, // 0
+        ];
+        matrix.reverse();
+        let grid = Grid::new(Some(matrix));
+        let mut shape = Shape::new(
+            4,
+            [
+                0b1111000, // ####...
+                0b0000000, // unused
+                0b0000000, // unused
+                0b0000000, // unused
+            ],
+        );
+        shape.set_location(0, 0);
+        assert_eq!(grid.contains(&shape), true);
+
+        shape.set_location(2, 1);
+        assert_eq!(grid.contains(&shape), true);
+
+        shape.set_location(1, 2);
+        assert_eq!(grid.contains(&shape), true);
+
+        shape.set_location(1, 3);
+        assert_eq!(grid.contains(&shape), false);
+
+        shape.set_location(3, 5);
+        assert_eq!(grid.contains(&shape), false);
+
+        let mut shape = Shape::new(
+            3,
+            [
+                0b0100000, // .#.
+                0b1110000, // ###
+                0b0100000, // .#.
+                0b0000000, // unused
+            ],
+        );
+        shape.set_location(4, 6);
+        assert_eq!(grid.contains(&shape), false);
+
+        shape.set_location(2, 7);
+        assert_eq!(grid.contains(&shape), true);
+    }
+
+    #[test]
+    fn grid_draw_top() {
+        let mut grid = Grid::new(Some([
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000, 0b0000000,
+            0b0000000, 0b0000000, 0b0000000, 0b0000000,
+        ]));
+        assert_eq!(grid.high_index, -1);
+
+        let mut shape = Shape::new(
+            3,
+            [
+                0b0100000, // .#.
+                0b1110000, // ###
+                0b0100000, // .#.
+                0b0000000, // unused
+            ],
+        );
+
+        shape.set_location(0, 15);
+        grid.draw_shape(&shape);
+        assert_eq!(grid.high_index, 15);
+
+        shape.set_location(0, 5);
+        grid.draw_shape(&shape);
+        assert_eq!(grid.high_index, 15);
     }
 }
