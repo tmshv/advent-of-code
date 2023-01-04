@@ -1,4 +1,4 @@
-use std::{fmt::Debug, io, vec};
+use std::{collections::HashMap, fmt::Debug, io, vec};
 
 use moveslice::Moveslice;
 
@@ -21,7 +21,7 @@ enum Jet {
 struct Grid {
     grid: [u8; 60],
     high_index: usize,
-    shift: u64,
+    shift: usize,
 }
 
 impl Grid {
@@ -45,6 +45,10 @@ impl Grid {
             high_index: 0,
             shift: 0,
         }
+    }
+
+    fn height(&self) -> usize {
+        self.shift + self.high_index
     }
 
     fn shift(&mut self) {
@@ -227,77 +231,132 @@ fn read_input() -> Vec<Jet> {
     }
 }
 
-fn solve(jets: Vec<Jet>, rocks: u64) -> Grid {
+fn drop_rock<'a>(grid: &mut Grid, jets: &mut impl Iterator<Item = &'a Jet>, rock: &mut Shape) {
+    // 1. get next shape
+    // let mut rock = shape_cycle.next().unwrap().clone();
+
+    // 2. fill grid with empty rows
+    // take the height of rock + 3 rows for the bottom or last pixel
+    let position = grid.high_index + 4; // 3 from task + 1 cause counting starts from 0
+    rock.set_location(2, position);
+
+    // 3. drop it with jet stream until it will be at the bottom
+    loop {
+        let jet = jets.next().unwrap();
+        match jet {
+            Jet::Left => {
+                rock.move_left();
+                if grid.contains(&rock) {
+                    rock.move_right();
+                }
+            }
+            Jet::Right => {
+                rock.move_right();
+                if grid.contains(&rock) {
+                    rock.move_left();
+                }
+            }
+        }
+
+        rock.move_down();
+        if grid.contains(&rock) {
+            rock.move_up();
+            grid.draw_shape(&rock);
+            break;
+        }
+    }
+
+    if grid.high_index > 50 {
+        grid.shift();
+    }
+}
+
+fn solve(jets: Vec<Jet>, rocks: usize) -> Grid {
     let shapes = get_shapes(7);
     let mut shape_cycle = shapes.iter().cycle();
     let mut jet_cycle = jets.iter().cycle();
 
+    let mut frames = HashMap::new();
+    let mut last_found = 0;
+    let mut heights = vec![];
+
     let mut grid = Grid::new(None);
-    for _ in 0..rocks {
-        // if i % 1_000_000_000 == 0 {
-        // println!("{}", i);
-        // }
-
-        // 1. get next shape
+    for index in 0..rocks {
         let mut rock = shape_cycle.next().unwrap().clone();
+        drop_rock(&mut grid, &mut jet_cycle, &mut rock);
 
-        // 2. fill grid with empty rows
-        // take the height of rock + 3 rows for the bottom or last pixel
-        let position = grid.high_index + 4; // 3 from task + 1 cause counting starts from 0
-        rock.set_location(2, position);
+        // save impact of this rock to the tall height
+        heights.push((grid.shift, grid.high_index));
 
-        // 3. drop it with jet stream until it will be at the bottom
-        loop {
-            let jet = jet_cycle.next().unwrap();
-            match jet {
-                Jet::Left => {
-                    rock.move_left();
-                    if grid.contains(&rock) {
-                        rock.move_right();
-                    }
-                }
-                Jet::Right => {
-                    rock.move_right();
-                    if grid.contains(&rock) {
-                        rock.move_left();
-                    }
-                }
+        let frame = frames.get(&grid.grid);
+        match frame {
+            // unique frame -> save it
+            None => {
+                frames.insert(grid.grid, (index, grid.height()));
             }
 
-            rock.move_down();
-            if grid.contains(&rock) {
-                rock.move_up();
-                grid.draw_shape(&rock);
-                break;
-            }
-        }
+            // frame found
+            Some((frame, start_height)) => {
+                if *frame < last_found {
+                    // frame is the start of the group
+                    // so frame-1 is the last value of height before groups were detected
+                    let head_frame = frame - 1;
+                    let head_height = heights[head_frame].0 + heights[head_frame].1;
 
-        if grid.high_index > 50 {
-            grid.shift();
+                    // index (or current iteration) - is the end of the group
+                    let end_height = grid.height();
+                    let group_frame = index - frame;
+                    let group_height = end_height - start_height;
+
+                    let iter_left = rocks - index;
+                    let pool = (rocks - head_frame) / group_frame;
+
+                    let tail_rocks = rocks - head_frame - group_frame * pool;
+
+                    println!(
+                        "REPEAT from frame {} -> {}; group_frame: {}; left {} iters",
+                        frame, index, group_frame, iter_left
+                    );
+                    println!("before_height = {} at frame {}", head_height, head_frame);
+                    println!("start_height: {}", start_height);
+                    println!("end_height: {}", end_height);
+                    println!("group_height: {}", group_height);
+                    println!("groups_pool: {}", pool);
+                    println!("tail_rocks: {}", tail_rocks);
+
+                    grid.shift = head_height + group_height * pool - grid.high_index;
+                    for _ in 0..tail_rocks {
+                        let mut rock = shape_cycle.next().unwrap().clone();
+                        drop_rock(&mut grid, &mut jet_cycle, &mut rock);
+                    }
+
+                    return grid;
+                } else {
+                    last_found = *frame;
+                }
+            }
         }
     }
     grid
 }
 
-fn part_two(grid: &Grid) -> u64 {
-    grid.shift + grid.high_index as u64
-}
-
 fn main() {
     // let rocks = 2022;
     // let rocks = 1_000_000;
-    let rocks = 1_000_000_000;
-    // let rocks = 1_000_000_000_000;
+    // let rocks = 1_000_000_000;
+    let rocks = 1_000_000_000_000;
     // let rocks = 10;
+
+    // let rocks = 10437;
 
     let jets = read_input();
     let grid = solve(jets, rocks);
-    let top = part_two(&grid);
+    let top = grid.height();
 
     // println!("Result: {} ({})", top, top == 3153);
     // println!("Result: {} ({})", top, top == 1553686);
-    println!("Result: {} ({})", top, top == 1553665705);
-    // println!("Result: {}", top);
+    // println!("Result: {} ({})", top, top == 1553665705);
+    println!("Result: {}", top);
 
     // for i in grid.grid.iter().rev() {
     //     if *i == 0 {
@@ -519,7 +578,7 @@ mod tests {
     fn get_shapes_height() {
         let heights: Vec<usize> = get_shapes(7).iter().map(|shape| shape.height).collect();
         assert_eq!(heights, vec![0, 2, 2, 3, 1]); // indices not actual height
-        // assert_eq!(heights, vec![1, 3, l, 4, 2]);
+                                                  // assert_eq!(heights, vec![1, 3, l, 4, 2]);
     }
 
     #[test]
