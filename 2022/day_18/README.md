@@ -60,4 +60,4 @@ What is the exterior surface area of your scanned lava droplet?
 cat input.txt | cargo run --release
 ```
 
-Result: ``
+Result: `2066`

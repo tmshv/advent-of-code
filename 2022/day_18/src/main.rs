@@ -1,4 +1,4 @@
-use petgraph::graphmap::UnGraphMap;
+use petgraph::{algo::kosaraju_scc, graph::NodeIndex, prelude::UnGraph};
 use std::{
     collections::HashSet,
     fmt::Debug,
@@ -85,21 +85,25 @@ impl Voxel {
 
 #[derive(Debug, Clone)]
 struct System {
-    graph: UnGraphMap<Voxel, ()>,
+    // graph: UnGraphMap<Voxel, ()>,
+    graph: UnGraph<Voxel, ()>,
+    nodes: Vec<NodeIndex>,
 }
 
 impl System {
     fn new(voxels: &Vec<Voxel>) -> System {
-        let mut graph = UnGraphMap::<Voxel, ()>::new();
+        let mut graph = UnGraph::<Voxel, ()>::default();
+        let mut nodes = Vec::new();
         for v in voxels {
-            graph.add_node(*v);
+            let id = graph.add_node(*v);
+            nodes.push(id);
         }
 
         let mut seen = HashSet::new();
         let mut edges = Vec::new();
-        for (i1, v1) in graph.nodes().enumerate() {
-            for (i2, v2) in graph.nodes().enumerate() {
-                if v1 == v2 {
+        for (i1, w1) in graph.node_weights().enumerate() {
+            for (i2, w2) in graph.node_weights().enumerate() {
+                if w1 == w2 {
                     continue;
                 }
                 if seen.contains(&(i1, i2)) || seen.contains(&(i2, i1)) {
@@ -107,8 +111,10 @@ impl System {
                 }
                 seen.insert((i1, i2));
                 seen.insert((i2, i1));
-                if v1.is_close(&v2) {
-                    edges.push((v1, v2));
+                if w1.is_close(&w2) {
+                    let n1 = nodes[i1].clone();
+                    let n2 = nodes[i2].clone();
+                    edges.push((n1, n2));
                 }
             }
         }
@@ -117,11 +123,13 @@ impl System {
             graph.add_edge(a, b, ());
         }
 
-        Self { graph }
+        Self { graph, nodes }
     }
 
-    fn has(&self, voxel: Voxel) -> bool {
-        self.graph.contains_node(voxel)
+    fn primary_island(&self) -> Vec<NodeIndex> {
+        let mut islands = kosaraju_scc(&self.graph);
+        islands.sort_by_key(|island| island.len());
+        islands.last().unwrap().clone()
     }
 }
 
@@ -147,8 +155,23 @@ fn get_bounding_box(items: &Vec<Voxel>) -> (i32, i32, i32, i32, i32, i32) {
     (min_x, max_x, min_y, max_y, min_z, max_z)
 }
 
+fn extend_bounding_box(bb: (i32, i32, i32, i32, i32, i32)) -> (i32, i32, i32, i32, i32, i32) {
+    let v = 1;
+    let (min_x, max_x, min_y, max_y, min_z, max_z) = bb;
+    (
+        min_x - v,
+        max_x + v,
+        min_y - v,
+        max_y + v,
+        min_z - v,
+        max_z + v,
+    )
+}
+
 fn invert_voxels(items: &Vec<Voxel>) -> Vec<Voxel> {
-    let (min_x, max_x, min_y, max_y, min_z, max_z) = get_bounding_box(items);
+    // extend bounding box by 1 in each side
+    // so thats mean solid will be completely within air
+    let (min_x, max_x, min_y, max_y, min_z, max_z) = extend_bounding_box(get_bounding_box(items));
     let mut others = vec![];
     for x in min_x..=max_x {
         for y in min_y..=max_y {
@@ -170,7 +193,7 @@ fn part_one(items: &Vec<Voxel>) -> u32 {
     // 1 neighbors -> voxel has one heighbor
     // 2, 3, 4 neighbors -> voxel has N heighbors
     let mut sum = 0u32;
-    for node in sys.graph.nodes() {
+    for node in sys.nodes {
         let edges = sys.graph.neighbors(node).count() as u32;
         sum += 6 - edges;
     }
@@ -187,12 +210,12 @@ fn part_two(items: &Vec<Voxel>) -> u32 {
     // create an anlternative graph of AIR
     // that is inverted version of SOLID graph
     // calculate additional volume as in previous part
-    // subtract AIR voxels with 0 neighbors
-    // which means they are inside SOLID neighbors
+    // take all AIR voxels that are not a BIG AIR (by finding biggest graph island)
+    // subtract AIR voxels in the same logic
 
     // calculate +SOLID
     let mut sum = 0u32;
-    for node in sys.graph.nodes() {
+    for node in sys.nodes {
         let edges = sys.graph.neighbors(node).count() as u32;
         sum += 6 - edges; // 6 edges of the box
     }
@@ -200,13 +223,16 @@ fn part_two(items: &Vec<Voxel>) -> u32 {
     // calculate -AIR
     let air = invert_voxels(items);
     let air = System::new(&air);
-    for a in air.graph.nodes() {
-        let n = air.graph.neighbors(a).count() as u32;
-        if n == 0 {
-            sum -= 6; // 6 edges of the box
-        }
-    }
 
+    let outside_air = air.primary_island();
+    for node in air.nodes {
+        // skip voxels from big air
+        if outside_air.contains(&node) {
+            continue;
+        }
+        let edges = air.graph.neighbors(node).count() as u32;
+        sum -= 6 - edges; // 6 edges of the box
+    }
     sum
 }
 
@@ -222,7 +248,11 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::{invert_voxels, part_one, ParseVoxelError, System, Voxel, get_bounding_box, part_two};
+    use petgraph::algo::kosaraju_scc;
+
+    use crate::{
+        get_bounding_box, invert_voxels, part_one, part_two, ParseVoxelError, System, Voxel,
+    };
 
     fn get_volume(items: &Vec<Voxel>) -> i32 {
         let (min_x, max_x, min_y, max_y, min_z, max_z) = get_bounding_box(items);
@@ -362,11 +392,50 @@ mod tests {
     }
 
     #[test]
-    fn system_has() {
-        let items = vec![Voxel::new(1, 1, 1)];
-        let sys = System::new(&items);
+    fn air_islands() {
+        let items = vec![
+            Voxel::new(2, 2, 2),
+            Voxel::new(1, 2, 2),
+            Voxel::new(3, 2, 2),
+            Voxel::new(2, 1, 2),
+            Voxel::new(2, 3, 2),
+            Voxel::new(2, 2, 1),
+            Voxel::new(2, 2, 3),
+            Voxel::new(2, 2, 4),
+            Voxel::new(2, 2, 6),
+            Voxel::new(1, 2, 5),
+            Voxel::new(3, 2, 5),
+            Voxel::new(2, 1, 5),
+            Voxel::new(2, 3, 5),
+        ];
+        let inverted = invert_voxels(&items);
+        let air = System::new(&inverted);
+        let islands = kosaraju_scc(&air.graph);
 
-        assert_eq!(sys.has(Voxel::new(1, 1, 1)), true);
-        assert_eq!(sys.has(Voxel::new(2, 1, 1)), false);
+        assert_eq!(islands.len(), 2);
+        assert_eq!(islands[0].len(), 1);
+        assert_eq!(islands[1].len(), 40);
+    }
+
+    #[test]
+    fn primary_islands() {
+        let items = vec![
+            Voxel::new(2, 2, 2),
+            Voxel::new(1, 2, 2),
+            Voxel::new(3, 2, 2),
+            Voxel::new(2, 1, 2),
+            Voxel::new(2, 3, 2),
+            Voxel::new(2, 2, 1),
+            Voxel::new(2, 2, 3),
+            Voxel::new(2, 2, 4),
+            Voxel::new(2, 2, 6),
+            Voxel::new(1, 2, 5),
+            Voxel::new(3, 2, 5),
+            Voxel::new(2, 1, 5),
+            Voxel::new(2, 3, 5),
+        ];
+        let sys = System::new(&items);
+        let result = sys.primary_island();
+        assert_eq!(result.len(), 8);
     }
 }
