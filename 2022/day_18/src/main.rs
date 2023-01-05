@@ -222,7 +222,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::{invert_voxels, part_one, ParseVoxelError, System, Voxel, get_bounding_box};
+    use crate::{invert_voxels, part_one, ParseVoxelError, System, Voxel, get_bounding_box, part_two};
 
     fn get_volume(items: &Vec<Voxel>) -> i32 {
         let (min_x, max_x, min_y, max_y, min_z, max_z) = get_bounding_box(items);
@@ -279,6 +279,26 @@ mod tests {
         assert_eq!(result, 64);
     }
 
+    #[test]
+    fn part_two_58() {
+        let items = vec![
+            Voxel::new(2, 2, 2),
+            Voxel::new(1, 2, 2),
+            Voxel::new(3, 2, 2),
+            Voxel::new(2, 1, 2),
+            Voxel::new(2, 3, 2),
+            Voxel::new(2, 2, 1),
+            Voxel::new(2, 2, 3),
+            Voxel::new(2, 2, 4),
+            Voxel::new(2, 2, 6),
+            Voxel::new(1, 2, 5),
+            Voxel::new(3, 2, 5),
+            Voxel::new(2, 1, 5),
+            Voxel::new(2, 3, 5),
+        ];
+        let result = part_two(&items);
+        assert_eq!(result, 58);
+    }
     #[test]
     fn invert_voxels_simple() {
         let items = vec![Voxel::new(0, 0, 0), Voxel::new(1, 1, 1)];
