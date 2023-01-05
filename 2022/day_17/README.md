@@ -363,7 +363,7 @@ How tall will the tower be after `1000000000000` rocks have stopped?
 ## Run
 
 ```sh
-cat input.txt | cargo run --release --bin two
+cat input.txt | cargo run --release --bin two_slow
 ```
 
 Result: `1553665689155`
