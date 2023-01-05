@@ -142,8 +142,8 @@ fn part_one(sys: &System) -> u32 {
     // 2, 3, 4 neighbors -> voxel has N heighbors
     let mut sum = 0u32;
     for node in &sys.nodes {
-        let nu = sys.graph.neighbors(*node).count() as u32;
-        sum += nu;
+        let edges = sys.graph.neighbors(*node).count() as u32;
+        sum += 6 - edges;
     }
     sum
 }
