@@ -8,6 +8,12 @@ use std::{
     str::FromStr,
 };
 
+#[derive(Debug, Clone)]
+enum Material {
+    Air,
+    Solid,
+}
+
 #[derive(Debug, Hash, PartialEq, Eq, Copy, Clone)]
 struct Voxel {
     x: i32,
@@ -81,13 +87,13 @@ impl Voxel {
 
 #[derive(Debug, Clone)]
 struct System {
-    graph: UnGraph<Voxel, ()>,
+    graph: UnGraph<Voxel, Material>,
     nodes: Vec<NodeIndex>,
 }
 
 impl System {
     fn new(voxels: &Vec<Voxel>) -> System {
-        let mut graph = UnGraph::<Voxel, ()>::default();
+        let mut graph = UnGraph::<Voxel, Material>::default();
         let mut nodes = vec![];
         for v in voxels {
             let id = graph.add_node(*v);
@@ -107,7 +113,6 @@ impl System {
                 seen.insert((i1, i2));
                 seen.insert((i2, i1));
                 if w1.is_close(&w2) {
-                    // println!("{:?} ({}) <-> {:?} ({})", w1, i1, w2, i2);
                     let n1 = nodes[i1].clone();
                     let n2 = nodes[i2].clone();
                     edges.push((n1, n2));
@@ -116,10 +121,14 @@ impl System {
         }
 
         for (a, b) in edges {
-            graph.add_edge(a, b, ());
+            graph.add_edge(a, b, Material::Solid);
         }
 
         Self { graph, nodes }
+    }
+
+    fn fill_with_air(&mut self) {
+
     }
 }
 
@@ -143,6 +152,31 @@ fn part_one(sys: &System) -> u32 {
     let mut sum = 0u32;
     for node in &sys.nodes {
         let edges = sys.graph.neighbors(*node).count() as u32;
+        let v = sys.graph.node_weight(*node).unwrap();
+        println!("{:?} = {} edges", v, edges);
+        sum += 6 - edges;
+    }
+    sum
+}
+
+fn part_two(sys: &mut System) -> u32 {
+    // 6 neighbors -> all sides of the voxel are adjacent with others
+    // 0 neighbors -> voxel is completely separate
+    // 1 neighbors -> voxel has one heighbor
+    // 2, 3, 4 neighbors -> voxel has N heighbors
+
+    // also travel all 6 adjacent VOXELS of current VOXEL that is AIR
+    // and if that neighbor AIR has not connected to the OUTSIDE_AIR
+    // that means -1 side for current VOXEL
+    // OUTSIDE AIR is an outside VOXEL relative to top left lava VOXEL
+
+    sys.fill_with_air();
+
+    let mut sum = 0u32;
+    for node in &sys.nodes {
+        let edges = sys.graph.neighbors(*node).count() as u32;
+        let v = sys.graph.node_weight(*node).unwrap();
+        println!("{:?} = {} edges", v, edges);
         sum += 6 - edges;
     }
     sum
@@ -150,10 +184,13 @@ fn part_one(sys: &System) -> u32 {
 
 fn main() {
     let items = read_input();
-    let sys = System::new(&items);
+    let mut sys = System::new(&items);
 
     let result = part_one(&sys);
     println!("Part one: {}", result);
+
+    let result = part_two(&mut sys);
+    println!("Part two: {}", result);
 }
 
 #[cfg(test)]
