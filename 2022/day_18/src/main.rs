@@ -107,11 +107,9 @@ impl System {
                 seen.insert((i1, i2));
                 seen.insert((i2, i1));
                 if w1.is_close(&w2) {
-                    println!("{:?} ({}) <-> {:?} ({})", w1, i1, w2, i2);
-
+                    // println!("{:?} ({}) <-> {:?} ({})", w1, i1, w2, i2);
                     let n1 = nodes[i1].clone();
                     let n2 = nodes[i2].clone();
-
                     edges.push((n1, n2));
                 }
             }
@@ -160,7 +158,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Voxel, ParseVoxelError};
+    use crate::{ParseVoxelError, Voxel, System, part_one};
 
     #[test]
     fn parse_voxel() {
@@ -175,5 +173,40 @@ mod tests {
 
         let result = "".parse::<Voxel>();
         assert_eq!(result, Err(ParseVoxelError));
+    }
+
+    #[test]
+    fn voxel_is_close() {
+        let a = Voxel { x: 2, y: 2, z: 2 };
+        let b = Voxel { x: 1, y: 2, z: 2 };
+        assert_eq!(a.is_close(&b), true);
+
+        let b = Voxel { x: 3, y: 2, z: 2 };
+        assert_eq!(a.is_close(&b), true);
+
+        let b = Voxel { x: 2, y: 2, z: 4 };
+        assert_eq!(a.is_close(&b), false);
+    }
+
+    #[test]
+    fn part_one_64() {
+        let items = vec![
+            Voxel { x: 2, y: 2, z: 2 },
+            Voxel { x: 1, y: 2, z: 2 },
+            Voxel { x: 3, y: 2, z: 2 },
+            Voxel { x: 2, y: 1, z: 2 },
+            Voxel { x: 2, y: 3, z: 2 },
+            Voxel { x: 2, y: 2, z: 1 },
+            Voxel { x: 2, y: 2, z: 3 },
+            Voxel { x: 2, y: 2, z: 4 },
+            Voxel { x: 2, y: 2, z: 6 },
+            Voxel { x: 1, y: 2, z: 5 },
+            Voxel { x: 3, y: 2, z: 5 },
+            Voxel { x: 2, y: 1, z: 5 },
+            Voxel { x: 2, y: 3, z: 5 },
+        ];
+        let sys = System::new(&items);
+        let result = part_one(&sys);
+        assert_eq!(result, 64);
     }
 }
