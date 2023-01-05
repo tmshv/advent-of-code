@@ -1,4 +1,4 @@
-use petgraph::{graph::NodeIndex, prelude::UnGraph};
+use petgraph::graphmap::UnGraphMap;
 use std::{
     collections::HashSet,
     fmt::Debug,
@@ -8,13 +8,7 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Debug, Clone)]
-enum Material {
-    Air,
-    Solid,
-}
-
-#[derive(Debug, Hash, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialOrd, Ord, Hash, PartialEq, Eq, Copy, Clone)]
 struct Voxel {
     x: i32,
     y: i32,
@@ -37,7 +31,7 @@ impl FromStr for Voxel {
         let y = parts[1].parse::<i32>().map_err(|_| ParseVoxelError)?;
         let z = parts[2].parse::<i32>().map_err(|_| ParseVoxelError)?;
 
-        Ok(Voxel { x, y, z })
+        Ok(Voxel::new(x, y, z))
     }
 }
 
@@ -66,6 +60,10 @@ impl Sub for Voxel {
 }
 
 impl Voxel {
+    fn new(x: i32, y: i32, z: i32) -> Voxel {
+        Voxel { x, y, z }
+    }
+
     fn is_close(&self, other: &Voxel) -> bool {
         let mut v = *self - *other;
         v.x = v.x.abs();
@@ -87,24 +85,21 @@ impl Voxel {
 
 #[derive(Debug, Clone)]
 struct System {
-    graph: UnGraph<Voxel, Material>,
-    nodes: Vec<NodeIndex>,
+    graph: UnGraphMap<Voxel, ()>,
 }
 
 impl System {
     fn new(voxels: &Vec<Voxel>) -> System {
-        let mut graph = UnGraph::<Voxel, Material>::default();
-        let mut nodes = vec![];
+        let mut graph = UnGraphMap::<Voxel, ()>::new();
         for v in voxels {
-            let id = graph.add_node(*v);
-            nodes.push(id);
+            graph.add_node(*v);
         }
 
         let mut seen = HashSet::new();
         let mut edges = Vec::new();
-        for (i1, w1) in graph.node_weights().enumerate() {
-            for (i2, w2) in graph.node_weights().enumerate() {
-                if w1 == w2 {
+        for (i1, v1) in graph.nodes().enumerate() {
+            for (i2, v2) in graph.nodes().enumerate() {
+                if v1 == v2 {
                     continue;
                 }
                 if seen.contains(&(i1, i2)) || seen.contains(&(i2, i1)) {
@@ -112,23 +107,21 @@ impl System {
                 }
                 seen.insert((i1, i2));
                 seen.insert((i2, i1));
-                if w1.is_close(&w2) {
-                    let n1 = nodes[i1].clone();
-                    let n2 = nodes[i2].clone();
-                    edges.push((n1, n2));
+                if v1.is_close(&v2) {
+                    edges.push((v1, v2));
                 }
             }
         }
 
         for (a, b) in edges {
-            graph.add_edge(a, b, Material::Solid);
+            graph.add_edge(a, b, ());
         }
 
-        Self { graph, nodes }
+        Self { graph }
     }
 
-    fn fill_with_air(&mut self) {
-
+    fn has(&self, voxel: Voxel) -> bool {
+        self.graph.contains_node(voxel)
     }
 }
 
@@ -144,66 +137,106 @@ fn read_input() -> Vec<Voxel> {
         .collect()
 }
 
-fn part_one(sys: &System) -> u32 {
+fn get_bounding_box(items: &Vec<Voxel>) -> (i32, i32, i32, i32, i32, i32) {
+    let min_x = items.iter().min_by_key(|v| v.x).unwrap().x;
+    let max_x = items.iter().max_by_key(|v| v.x).unwrap().x;
+    let min_y = items.iter().min_by_key(|v| v.y).unwrap().y;
+    let max_y = items.iter().max_by_key(|v| v.y).unwrap().y;
+    let min_z = items.iter().min_by_key(|v| v.z).unwrap().z;
+    let max_z = items.iter().max_by_key(|v| v.z).unwrap().z;
+    (min_x, max_x, min_y, max_y, min_z, max_z)
+}
+
+fn invert_voxels(items: &Vec<Voxel>) -> Vec<Voxel> {
+    let (min_x, max_x, min_y, max_y, min_z, max_z) = get_bounding_box(items);
+    let mut others = vec![];
+    for x in min_x..=max_x {
+        for y in min_y..=max_y {
+            for z in min_z..=max_z {
+                let v = Voxel::new(x, y, z);
+                if !items.contains(&v) {
+                    others.push(v);
+                }
+            }
+        }
+    }
+    others
+}
+
+fn part_one(items: &Vec<Voxel>) -> u32 {
+    let sys = System::new(items);
     // 6 neighbors -> all sides of the voxel are adjacent with others
     // 0 neighbors -> voxel is completely separate
     // 1 neighbors -> voxel has one heighbor
     // 2, 3, 4 neighbors -> voxel has N heighbors
     let mut sum = 0u32;
-    for node in &sys.nodes {
-        let edges = sys.graph.neighbors(*node).count() as u32;
-        let v = sys.graph.node_weight(*node).unwrap();
-        println!("{:?} = {} edges", v, edges);
+    for node in sys.graph.nodes() {
+        let edges = sys.graph.neighbors(node).count() as u32;
         sum += 6 - edges;
     }
     sum
 }
 
-fn part_two(sys: &mut System) -> u32 {
+fn part_two(items: &Vec<Voxel>) -> u32 {
+    let sys = System::new(items);
     // 6 neighbors -> all sides of the voxel are adjacent with others
     // 0 neighbors -> voxel is completely separate
     // 1 neighbors -> voxel has one heighbor
     // 2, 3, 4 neighbors -> voxel has N heighbors
 
-    // also travel all 6 adjacent VOXELS of current VOXEL that is AIR
-    // and if that neighbor AIR has not connected to the OUTSIDE_AIR
-    // that means -1 side for current VOXEL
-    // OUTSIDE AIR is an outside VOXEL relative to top left lava VOXEL
+    // create an anlternative graph of AIR
+    // that is inverted version of SOLID graph
+    // calculate additional volume as in previous part
+    // subtract AIR voxels with 0 neighbors
+    // which means they are inside SOLID neighbors
 
-    sys.fill_with_air();
-
+    // calculate +SOLID
     let mut sum = 0u32;
-    for node in &sys.nodes {
-        let edges = sys.graph.neighbors(*node).count() as u32;
-        let v = sys.graph.node_weight(*node).unwrap();
-        println!("{:?} = {} edges", v, edges);
-        sum += 6 - edges;
+    for node in sys.graph.nodes() {
+        let edges = sys.graph.neighbors(node).count() as u32;
+        sum += 6 - edges; // 6 edges of the box
     }
+
+    // calculate -AIR
+    let air = invert_voxels(items);
+    let air = System::new(&air);
+    for a in air.graph.nodes() {
+        let n = air.graph.neighbors(a).count() as u32;
+        if n == 0 {
+            sum -= 6; // 6 edges of the box
+        }
+    }
+
     sum
 }
 
 fn main() {
     let items = read_input();
-    let mut sys = System::new(&items);
 
-    let result = part_one(&sys);
+    let result = part_one(&items);
     println!("Part one: {}", result);
 
-    let result = part_two(&mut sys);
+    let result = part_two(&items);
     println!("Part two: {}", result);
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{ParseVoxelError, Voxel, System, part_one};
+    use crate::{invert_voxels, part_one, ParseVoxelError, System, Voxel, get_bounding_box};
+
+    fn get_volume(items: &Vec<Voxel>) -> i32 {
+        let (min_x, max_x, min_y, max_y, min_z, max_z) = get_bounding_box(items);
+        let s = 1;
+        (max_x - min_x + s) * (max_y - min_y + s) * (max_z - min_z + s)
+    }
 
     #[test]
     fn parse_voxel() {
         let result = "1,1,1".parse::<Voxel>();
-        assert_eq!(result, Ok(Voxel { x: 1, y: 1, z: 1 }));
+        assert_eq!(result, Ok(Voxel::new(1, 1, 1)));
 
         let result = "-1,1,1".parse::<Voxel>();
-        assert_eq!(result, Ok(Voxel { x: -1, y: 1, z: 1 }));
+        assert_eq!(result, Ok(Voxel::new(-1, 1, 1)));
 
         let result = "1-1,1".parse::<Voxel>();
         assert_eq!(result, Err(ParseVoxelError));
@@ -214,36 +247,106 @@ mod tests {
 
     #[test]
     fn voxel_is_close() {
-        let a = Voxel { x: 2, y: 2, z: 2 };
-        let b = Voxel { x: 1, y: 2, z: 2 };
+        let a = Voxel::new(2, 2, 2);
+        let b = Voxel::new(1, 2, 2);
         assert_eq!(a.is_close(&b), true);
 
-        let b = Voxel { x: 3, y: 2, z: 2 };
+        let b = Voxel::new(3, 2, 2);
         assert_eq!(a.is_close(&b), true);
 
-        let b = Voxel { x: 2, y: 2, z: 4 };
+        let b = Voxel::new(2, 2, 4);
         assert_eq!(a.is_close(&b), false);
     }
 
     #[test]
     fn part_one_64() {
         let items = vec![
-            Voxel { x: 2, y: 2, z: 2 },
-            Voxel { x: 1, y: 2, z: 2 },
-            Voxel { x: 3, y: 2, z: 2 },
-            Voxel { x: 2, y: 1, z: 2 },
-            Voxel { x: 2, y: 3, z: 2 },
-            Voxel { x: 2, y: 2, z: 1 },
-            Voxel { x: 2, y: 2, z: 3 },
-            Voxel { x: 2, y: 2, z: 4 },
-            Voxel { x: 2, y: 2, z: 6 },
-            Voxel { x: 1, y: 2, z: 5 },
-            Voxel { x: 3, y: 2, z: 5 },
-            Voxel { x: 2, y: 1, z: 5 },
-            Voxel { x: 2, y: 3, z: 5 },
+            Voxel::new(2, 2, 2),
+            Voxel::new(1, 2, 2),
+            Voxel::new(3, 2, 2),
+            Voxel::new(2, 1, 2),
+            Voxel::new(2, 3, 2),
+            Voxel::new(2, 2, 1),
+            Voxel::new(2, 2, 3),
+            Voxel::new(2, 2, 4),
+            Voxel::new(2, 2, 6),
+            Voxel::new(1, 2, 5),
+            Voxel::new(3, 2, 5),
+            Voxel::new(2, 1, 5),
+            Voxel::new(2, 3, 5),
         ];
-        let sys = System::new(&items);
-        let result = part_one(&sys);
+        let result = part_one(&items);
         assert_eq!(result, 64);
+    }
+
+    #[test]
+    fn invert_voxels_simple() {
+        let items = vec![Voxel::new(0, 0, 0), Voxel::new(1, 1, 1)];
+        let inverted = invert_voxels(&items);
+        assert_eq!(
+            inverted,
+            vec![
+                Voxel::new(0, 0, 1),
+                Voxel::new(0, 1, 0),
+                Voxel::new(0, 1, 1),
+                Voxel::new(1, 0, 0),
+                Voxel::new(1, 0, 1),
+                Voxel::new(1, 1, 0),
+            ]
+        );
+    }
+
+    #[test]
+    fn invert_voxels_from_test() {
+        let items = vec![
+            Voxel::new(2, 2, 2),
+            Voxel::new(1, 2, 2),
+            Voxel::new(3, 2, 2),
+            Voxel::new(2, 1, 2),
+            Voxel::new(2, 3, 2),
+            Voxel::new(2, 2, 1),
+            Voxel::new(2, 2, 3),
+            Voxel::new(2, 2, 4),
+            Voxel::new(2, 2, 6),
+            Voxel::new(1, 2, 5),
+            Voxel::new(3, 2, 5),
+            Voxel::new(2, 1, 5),
+            Voxel::new(2, 3, 5),
+        ];
+        let inverted = invert_voxels(&items);
+        let all = items.iter().all(|v| !inverted.contains(v));
+        assert_eq!(all, true);
+    }
+
+    #[test]
+    fn invert_voxels_count() {
+        let items = vec![
+            Voxel::new(2, 2, 2),
+            Voxel::new(1, 2, 2),
+            Voxel::new(3, 2, 2),
+            Voxel::new(2, 1, 2),
+            Voxel::new(2, 3, 2),
+            Voxel::new(2, 2, 1),
+            Voxel::new(2, 2, 3),
+            Voxel::new(2, 2, 4),
+            Voxel::new(2, 2, 6),
+            Voxel::new(1, 2, 5),
+            Voxel::new(3, 2, 5),
+            Voxel::new(2, 1, 5),
+            Voxel::new(2, 3, 5),
+        ];
+        let volume = get_volume(&items) as usize;
+        assert_eq!(volume, 54);
+        let inverted = invert_voxels(&items);
+        assert_eq!(inverted.len(), volume - items.len());
+    }
+
+    #[test]
+    fn system_has() {
+        let items = vec![Voxel::new(1, 1, 1)];
+        let sys = System::new(&items);
+
+        assert_eq!(sys.has(Voxel::new(1, 1, 1)), true);
+        assert_eq!(sys.has(Voxel::new(2, 1, 1)), false);
     }
 }
