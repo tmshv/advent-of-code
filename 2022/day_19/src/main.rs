@@ -26,6 +26,20 @@ impl State {
         let (ore, clay, obsidian, geode) = cost;
         self.ore >= ore && self.clay >= clay && self.obsidian >= obsidian && self.geode >= geode
     }
+
+    fn create_robot(&mut self, robot: (u16, u16, u16, u16), cost: (u16, u16, u16, u16)) {
+        // + robots
+        self.ore_robots += robot.0;
+        self.clay_robots += robot.1;
+        self.obsidian_robots += robot.2;
+        self.geode_robots += robot.3;
+
+        // - resources
+        self.ore -= cost.0;
+        self.clay -= cost.1;
+        self.obsidian -= cost.2;
+        self.geode -= cost.3;
+    }
 }
 
 // #[derive(Debug, PartialEq, Eq)]
@@ -91,7 +105,7 @@ impl Blueprint {
             for (robot, can_build) in self.robots_to_build(&state).iter().enumerate() {
                 if *can_build {
                     let mut next_state = state.clone();
-                    let (robots, resources) = match robot {
+                    let (robot, cost) = match robot {
                         0 => ((1, 0, 0, 0), self.ore_robot_cost),
                         1 => ((0, 1, 0, 0), self.clay_robot_cost),
                         2 => ((0, 0, 1, 0), self.obsidian_robot_cost),
@@ -100,19 +114,7 @@ impl Blueprint {
                             panic!("unreachable");
                         }
                     };
-
-                    // + robots
-                    next_state.ore_robots += robots.0;
-                    next_state.clay_robots += robots.1;
-                    next_state.obsidian_robots += robots.2;
-                    next_state.geode_robots += robots.3;
-
-                    // - resources
-                    next_state.ore -= resources.0;
-                    next_state.clay -= resources.1;
-                    next_state.obsidian -= resources.2;
-                    next_state.geode -= resources.3;
-
+                    next_state.create_robot(robot, cost);
                     next_states.push(next_state);
                 }
             }
