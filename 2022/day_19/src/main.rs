@@ -7,10 +7,9 @@ use std::{
     str::FromStr,
 };
 
-const LAST_MINUTE: u16 = 24;
-
 #[derive(Debug, Copy, Clone)]
 struct State {
+    time: u16,
     ore: u16,
     clay: u16,
     obsidian: u16,
@@ -19,6 +18,12 @@ struct State {
     clay_robots: u16,
     obsidian_robots: u16,
     geode_robots: u16,
+}
+
+impl State {
+    fn has_time(&self) -> bool {
+        self.time > 0
+    }
 }
 
 // #[derive(Debug, PartialEq, Eq)]
@@ -49,14 +54,14 @@ struct Blueprint {
 }
 
 impl Blueprint {
-    fn evaluate(&self, state: State, minute: u16) -> u16 {
+    fn evaluate(&self, state: State) -> u16 {
         // end of recursion
         // at the last minute just return total earned geode
-        if minute == LAST_MINUTE {
+        if !state.has_time() {
             // if state.geode > 5 || state.geode_robots > 2 {
             //     println!("stop of good variant at M{} {:?}", minute, state);
             // }
-            return state.geode + state.geode_robots;
+            return state.geode;
         }
 
         // see what robots can be factored according to resources
@@ -103,13 +108,14 @@ impl Blueprint {
             s.clay += state.clay_robots;
             s.obsidian += state.obsidian_robots;
             s.geode += state.geode_robots;
+            s.time -= 1;
         }
 
         // evaluate new states starting from current amount of geode earned
         let mut max_geodes = state.geode;
         // println!("M{} {:?}", minute, state);
         for s in next_states {
-            let geodes = self.evaluate(s, minute + 1);
+            let geodes = self.evaluate(s);
             if geodes > max_geodes {
                 // println!("improve at M{} {:?}", minute, state);
                 max_geodes = geodes;
@@ -163,7 +169,7 @@ impl Blueprint {
 fn part_one(blueprints: &Vec<Blueprint>, state: State) -> u16 {
     let mut result = 0;
     for blueprint in blueprints {
-        let geodes_earned = blueprint.evaluate(state, 1);
+        let geodes_earned = blueprint.evaluate(state);
         let level = blueprint.id * geodes_earned;
         result += level;
     }
@@ -191,6 +197,7 @@ fn main() {
     let result = part_one(
         &blueprints,
         State {
+            time: 24,
             ore: 0,
             clay: 0,
             obsidian: 0,
@@ -219,6 +226,7 @@ mod tests {
         };
         let result = blueprint.evaluate(
             State {
+                time: 24,
                 ore: 0,
                 clay: 0,
                 obsidian: 0,
@@ -228,7 +236,6 @@ mod tests {
                 obsidian_robots: 0,
                 geode_robots: 0,
             },
-            1,
         );
         assert_eq!(result, 9);
     }
@@ -243,6 +250,7 @@ mod tests {
         };
         let result = blueprint.evaluate(
             State {
+                time: 24,
                 ore: 0,
                 clay: 0,
                 obsidian: 0,
@@ -252,7 +260,6 @@ mod tests {
                 obsidian_robots: 0,
                 geode_robots: 0,
             },
-            1,
         );
         assert_eq!(result, 12);
     }
