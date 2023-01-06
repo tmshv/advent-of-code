@@ -9,15 +9,15 @@ use regex::Regex;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct State {
-    time: u8,
-    ore: u8,
-    clay: u8,
-    obsidian: u8,
-    geode: u8,
-    ore_robots: u8,
-    clay_robots: u8,
-    obsidian_robots: u8,
-    geode_robots: u8,
+    time: u16,
+    ore: u16,
+    clay: u16,
+    obsidian: u16,
+    geode: u16,
+    ore_robots: u16,
+    clay_robots: u16,
+    obsidian_robots: u16,
+    geode_robots: u16,
 }
 
 impl State {
@@ -25,7 +25,7 @@ impl State {
         self.time > 0
     }
 
-    fn enough_robots(&self, cost: (u8, u8, u8, u8)) -> bool {
+    fn enough_robots(&self, cost: (u16, u16, u16, u16)) -> bool {
         let (ore, clay, obsidian, geode) = cost;
         self.ore_robots >= ore + 1
             && self.clay_robots >= clay + 1
@@ -33,12 +33,12 @@ impl State {
             && self.geode_robots >= geode + 1
     }
 
-    fn enough_resources(&self, cost: (u8, u8, u8, u8)) -> bool {
+    fn enough_resources(&self, cost: (u16, u16, u16, u16)) -> bool {
         let (ore, clay, obsidian, geode) = cost;
         self.ore >= ore && self.clay >= clay && self.obsidian >= obsidian && self.geode >= geode
     }
 
-    fn create_robot(&mut self, robot: (u8, u8, u8, u8), cost: (u8, u8, u8, u8)) {
+    fn create_robot(&mut self, robot: (u16, u16, u16, u16), cost: (u16, u16, u16, u16)) {
         // + robots
         self.ore_robots += robot.0;
         self.clay_robots += robot.1;
@@ -65,12 +65,12 @@ impl State {
 
 #[derive(Debug, Clone, PartialEq)]
 struct Blueprint {
-    id: u8,
+    id: u16,
 
-    ore_robot_cost: (u8, u8, u8, u8),
-    clay_robot_cost: (u8, u8, u8, u8),
-    obsidian_robot_cost: (u8, u8, u8, u8),
-    geode_robot_cost: (u8, u8, u8, u8),
+    ore_robot_cost: (u16, u16, u16, u16),
+    clay_robot_cost: (u16, u16, u16, u16),
+    obsidian_robot_cost: (u16, u16, u16, u16),
+    geode_robot_cost: (u16, u16, u16, u16),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -90,43 +90,43 @@ impl FromStr for Blueprint {
                     .get(1)
                     .unwrap()
                     .as_str()
-                    .parse::<u8>()
+                    .parse::<u16>()
                     .map_err(|_| ParseBlueprintError)?;
                 let ore_cost = cap
                     .get(2)
                     .unwrap()
                     .as_str()
-                    .parse::<u8>()
+                    .parse::<u16>()
                     .map_err(|_| ParseBlueprintError)?;
                 let clay_cost = cap
                     .get(3)
                     .unwrap()
                     .as_str()
-                    .parse::<u8>()
+                    .parse::<u16>()
                     .map_err(|_| ParseBlueprintError)?;
                 let obsidian_cost_ore = cap
                     .get(4)
                     .unwrap()
                     .as_str()
-                    .parse::<u8>()
+                    .parse::<u16>()
                     .map_err(|_| ParseBlueprintError)?;
                 let obsidian_cost_clay = cap
                     .get(5)
                     .unwrap()
                     .as_str()
-                    .parse::<u8>()
+                    .parse::<u16>()
                     .map_err(|_| ParseBlueprintError)?;
                 let geode_cost_ore = cap
                     .get(6)
                     .unwrap()
                     .as_str()
-                    .parse::<u8>()
+                    .parse::<u16>()
                     .map_err(|_| ParseBlueprintError)?;
                 let geode_cost_obsidian = cap
                     .get(7)
                     .unwrap()
                     .as_str()
-                    .parse::<u8>()
+                    .parse::<u16>()
                     .map_err(|_| ParseBlueprintError)?;
 
                 Ok(Blueprint {
@@ -142,9 +142,9 @@ impl FromStr for Blueprint {
 }
 
 impl Blueprint {
-    fn evaluate(&self, state: State) -> u8 {
-        let mut seen = HashSet::<State>::with_capacity(200_000_000);
-        let mut deq = VecDeque::<State>::with_capacity(200_000_000);
+    fn evaluate(&self, state: State) -> u16 {
+        let mut seen = HashSet::<State>::with_capacity(10_000_000);
+        let mut deq = VecDeque::<State>::with_capacity(10_000_000);
         deq.push_front(state);
 
         // evaluate new states starting from current amount of geode earned
@@ -152,9 +152,9 @@ impl Blueprint {
         let mut max_at_time = state.time;
 
         while deq.len() > 0 {
-            if deq.len() % 1000000 == 0 {
-                println!("Q{}", deq.len());
-            }
+            // if deq.len() % 1000000 == 0 {
+            //     println!("Q{}", deq.len());
+            // }
 
             let state = deq.pop_front().unwrap();
 
@@ -257,7 +257,7 @@ fn read_input() -> Vec<Blueprint> {
         .collect()
 }
 
-fn part_one(blueprints: &Vec<Blueprint>, state: State) -> u8 {
+fn part_one(blueprints: &Vec<Blueprint>, state: State) -> u16 {
     blueprints
         .iter()
         .map(|blueprint| {
@@ -267,7 +267,7 @@ fn part_one(blueprints: &Vec<Blueprint>, state: State) -> u8 {
         .sum()
 }
 
-fn part_two(blueprints: &Vec<Blueprint>, state: State) -> u8 {
+fn part_two(blueprints: &Vec<Blueprint>, state: State) -> u16 {
     blueprints
         .iter()
         .take(3)
@@ -295,13 +295,22 @@ fn main() {
     // println!("Part one: {}", result);
 
     let result = part_two(
-        &vec![Blueprint {
-            id: 1,
-            ore_robot_cost: (4, 0, 0, 0),
-            clay_robot_cost: (2, 0, 0, 0),
-            obsidian_robot_cost: (3, 14, 0, 0),
-            geode_robot_cost: (2, 0, 7, 0),
-        }],
+        &vec![
+            // Blueprint {
+            //     id: 1,
+            //     ore_robot_cost: (4, 0, 0, 0),
+            //     clay_robot_cost: (2, 0, 0, 0),
+            //     obsidian_robot_cost: (3, 14, 0, 0),
+            //     geode_robot_cost: (2, 0, 7, 0),
+            // },
+            Blueprint {
+                id: 2,
+                ore_robot_cost: (2, 0, 0, 0),
+                clay_robot_cost: (3, 0, 0, 0),
+                obsidian_robot_cost: (3, 8, 0, 0),
+                geode_robot_cost: (3, 0, 12, 0),
+            },
+        ],
         State {
             time: 32,
             ore: 0,
@@ -336,28 +345,28 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn blueprint1_9geode() {
-    //     let blueprint = Blueprint {
-    //         id: 1,
-    //         ore_robot_cost: (4, 0, 0, 0),
-    //         clay_robot_cost: (2, 0, 0, 0),
-    //         obsidian_robot_cost: (3, 14, 0, 0),
-    //         geode_robot_cost: (2, 0, 7, 0),
-    //     };
-    //     let result = blueprint.evaluate(State {
-    //         time: 24,
-    //         ore: 0,
-    //         clay: 0,
-    //         obsidian: 0,
-    //         geode: 0,
-    //         ore_robots: 1,
-    //         clay_robots: 0,
-    //         obsidian_robots: 0,
-    //         geode_robots: 0,
-    //     });
-    //     assert_eq!(result, 9);
-    // }
+    #[test]
+    fn blueprint1_9geode() {
+        let blueprint = Blueprint {
+            id: 1,
+            ore_robot_cost: (4, 0, 0, 0),
+            clay_robot_cost: (2, 0, 0, 0),
+            obsidian_robot_cost: (3, 14, 0, 0),
+            geode_robot_cost: (2, 0, 7, 0),
+        };
+        let result = blueprint.evaluate(State {
+            time: 24,
+            ore: 0,
+            clay: 0,
+            obsidian: 0,
+            geode: 0,
+            ore_robots: 1,
+            clay_robots: 0,
+            obsidian_robots: 0,
+            geode_robots: 0,
+        });
+        assert_eq!(result, 9);
+    }
 
     #[test]
     fn blueprint1_56geode() {
@@ -382,28 +391,51 @@ mod tests {
         assert_eq!(result, 56);
     }
 
-    // #[test]
-    // fn blueprint2_12geode() {
-    //     let blueprint = Blueprint {
-    //         id: 2,
-    //         ore_robot_cost: (2, 0, 0, 0),
-    //         clay_robot_cost: (3, 0, 0, 0),
-    //         obsidian_robot_cost: (3, 8, 0, 0),
-    //         geode_robot_cost: (3, 0, 12, 0),
-    //     };
-    //     let result = blueprint.evaluate(State {
-    //         time: 24,
-    //         ore: 0,
-    //         clay: 0,
-    //         obsidian: 0,
-    //         geode: 0,
-    //         ore_robots: 1,
-    //         clay_robots: 0,
-    //         obsidian_robots: 0,
-    //         geode_robots: 0,
-    //     });
-    //     assert_eq!(result, 12);
-    // }
+    #[test]
+    fn blueprint2_12geode() {
+        let blueprint = Blueprint {
+            id: 2,
+            ore_robot_cost: (2, 0, 0, 0),
+            clay_robot_cost: (3, 0, 0, 0),
+            obsidian_robot_cost: (3, 8, 0, 0),
+            geode_robot_cost: (3, 0, 12, 0),
+        };
+        let result = blueprint.evaluate(State {
+            time: 24,
+            ore: 0,
+            clay: 0,
+            obsidian: 0,
+            geode: 0,
+            ore_robots: 1,
+            clay_robots: 0,
+            obsidian_robots: 0,
+            geode_robots: 0,
+        });
+        assert_eq!(result, 12);
+    }
+
+    #[test]
+    fn blueprint2_62geode() {
+        let blueprint = Blueprint {
+            id: 2,
+            ore_robot_cost: (2, 0, 0, 0),
+            clay_robot_cost: (3, 0, 0, 0),
+            obsidian_robot_cost: (3, 8, 0, 0),
+            geode_robot_cost: (3, 0, 12, 0),
+        };
+        let result = blueprint.evaluate(State {
+            time: 32,
+            ore: 0,
+            clay: 0,
+            obsidian: 0,
+            geode: 0,
+            ore_robots: 1,
+            clay_robots: 0,
+            obsidian_robots: 0,
+            geode_robots: 0,
+        });
+        assert_eq!(result, 62);
+    }
 
     #[test]
     fn state_has_time() {
