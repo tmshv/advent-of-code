@@ -199,7 +199,6 @@ impl Blueprint {
                 next_state.tick();
                 next_state.create_robot((0, 0, 1, 0), self.obsidian_robot_cost);
                 deq.push_back(next_state);
-            } else {
             }
 
             // check branch where we buy clay robot
