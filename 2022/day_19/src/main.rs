@@ -224,19 +224,17 @@ mod tests {
             obsidian_robot_cost: (3, 14, 0, 0),
             geode_robot_cost: (2, 0, 7, 0),
         };
-        let result = blueprint.evaluate(
-            State {
-                time: 24,
-                ore: 0,
-                clay: 0,
-                obsidian: 0,
-                geode: 0,
-                ore_robots: 1,
-                clay_robots: 0,
-                obsidian_robots: 0,
-                geode_robots: 0,
-            },
-        );
+        let result = blueprint.evaluate(State {
+            time: 24,
+            ore: 0,
+            clay: 0,
+            obsidian: 0,
+            geode: 0,
+            ore_robots: 1,
+            clay_robots: 0,
+            obsidian_robots: 0,
+            geode_robots: 0,
+        });
         assert_eq!(result, 9);
     }
     #[test]
@@ -248,19 +246,17 @@ mod tests {
             obsidian_robot_cost: (3, 8, 0, 0),
             geode_robot_cost: (3, 0, 12, 0),
         };
-        let result = blueprint.evaluate(
-            State {
-                time: 24,
-                ore: 0,
-                clay: 0,
-                obsidian: 0,
-                geode: 0,
-                ore_robots: 1,
-                clay_robots: 0,
-                obsidian_robots: 0,
-                geode_robots: 0,
-            },
-        );
+        let result = blueprint.evaluate(State {
+            time: 24,
+            ore: 0,
+            clay: 0,
+            obsidian: 0,
+            geode: 0,
+            ore_robots: 1,
+            clay_robots: 0,
+            obsidian_robots: 0,
+            geode_robots: 0,
+        });
         assert_eq!(result, 12);
     }
 }
