@@ -177,7 +177,7 @@ fn main() {
             ore_robot_cost: (4, 0, 0, 0),
             clay_robot_cost: (2, 0, 0, 0),
             obsidian_robot_cost: (3, 14, 0, 0),
-            geode_robot_cost: (7, 0, 2, 0),
+            geode_robot_cost: (2, 0, 7, 0),
         },
         // Blueprint {
         //     id: 2,
@@ -215,7 +215,7 @@ mod tests {
             ore_robot_cost: (4, 0, 0, 0),
             clay_robot_cost: (2, 0, 0, 0),
             obsidian_robot_cost: (3, 14, 0, 0),
-            geode_robot_cost: (7, 0, 2, 0),
+            geode_robot_cost: (2, 0, 7, 0),
         };
         let result = blueprint.evaluate(
             State {
