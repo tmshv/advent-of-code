@@ -24,6 +24,11 @@ impl State {
     fn has_time(&self) -> bool {
         self.time > 0
     }
+
+    fn enough_resources(&self, cost: (u16, u16, u16, u16)) -> bool {
+        let (ore, clay, obsidian, geode) = cost;
+        self.ore >= ore && self.clay >= clay && self.obsidian >= obsidian && self.geode >= geode
+    }
 }
 
 // #[derive(Debug, PartialEq, Eq)]
@@ -126,31 +131,11 @@ impl Blueprint {
 
     fn robots_to_build(&self, state: &State) -> [bool; 4] {
         [
-            self.enough_for_ore_robot(state),
-            self.enough_for_clay_robot(state),
-            self.enough_for_obsidian_robot(state),
-            self.enough_for_geode_robot(state),
+            state.enough_resources(self.ore_robot_cost),
+            state.enough_resources(self.clay_robot_cost),
+            state.enough_resources(self.obsidian_robot_cost),
+            state.enough_resources(self.geode_robot_cost),
         ]
-    }
-
-    fn enough_for_ore_robot(&self, state: &State) -> bool {
-        let (ore, clay, obsidian, geode) = self.ore_robot_cost;
-        state.ore >= ore && state.clay >= clay && state.obsidian >= obsidian && state.geode >= geode
-    }
-
-    fn enough_for_clay_robot(&self, state: &State) -> bool {
-        let (ore, clay, obsidian, geode) = self.clay_robot_cost;
-        state.ore >= ore && state.clay >= clay && state.obsidian >= obsidian && state.geode >= geode
-    }
-
-    fn enough_for_obsidian_robot(&self, state: &State) -> bool {
-        let (ore, clay, obsidian, geode) = self.obsidian_robot_cost;
-        state.ore >= ore && state.clay >= clay && state.obsidian >= obsidian && state.geode >= geode
-    }
-
-    fn enough_for_geode_robot(&self, state: &State) -> bool {
-        let (ore, clay, obsidian, geode) = self.geode_robot_cost;
-        state.ore >= ore && state.clay >= clay && state.obsidian >= obsidian && state.geode >= geode
     }
 }
 
