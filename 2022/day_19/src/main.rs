@@ -221,9 +221,21 @@ impl Blueprint {
                 deq.push_back(next_state);
             }
 
+            let mut can_buy = 0;
+            if state.enough_resources(self.ore_robot_cost) {
+                can_buy += 1;
+            }
+            if state.enough_resources(self.clay_robot_cost) {
+                can_buy += 1;
+            }
+            if state.enough_resources(self.obsidian_robot_cost) {
+                can_buy += 1;
+            }
+
             // add current state too
             // as an option if strategy is to accumulate resources
-            if state.time > 2 {
+            // do not accumulate resources if can build some robots
+            if state.time > 2 && can_buy < 2 {
                 let mut no_robot_state = state.clone();
                 no_robot_state.tick();
                 deq.push_back(no_robot_state);
