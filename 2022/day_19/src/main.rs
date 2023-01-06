@@ -42,11 +42,13 @@ impl State {
     }
 
     fn tick(&mut self) {
-        self.ore += self.ore_robots;
-        self.clay += self.clay_robots;
-        self.obsidian += self.obsidian_robots;
-        self.geode += self.geode_robots;
-        self.time -= 1;
+        if self.time > 0 {
+            self.ore += self.ore_robots;
+            self.clay += self.clay_robots;
+            self.obsidian += self.obsidian_robots;
+            self.geode += self.geode_robots;
+            self.time -= 1;
+        }
     }
 }
 
@@ -84,29 +86,28 @@ impl Blueprint {
 
         // evaluate new states starting from current amount of geode earned
         let mut max_geodes = state.geode;
+
         while deq.len() > 0 {
             let state = deq.pop_front().unwrap();
 
+            // state is already checked
             if seen.contains(&state) {
                 continue;
             } else {
                 seen.insert(state.clone());
             }
 
-            // end of recursion
-            // at the last minute just return total earned geode
+            // state is wasted
             if !state.has_time() {
-                // if state.geode > 5 || state.geode_robots > 2 {
-                //     println!("stop of good variant at M{} {:?}", minute, state);
-                // }
-                // return state.geode;
                 continue;
             }
 
-            if state.geode + state.geode_robots > max_geodes {
-                max_geodes = state.geode + state.geode_robots;
+            let geodes = state.geode + state.geode_robots;
+            if geodes > max_geodes {
+                max_geodes = geodes;
             }
 
+            // check unique branch where we buy geode robot
             if state.enough_resources(self.geode_robot_cost) {
                 let mut next_state = state.clone();
                 next_state.tick();
@@ -116,8 +117,9 @@ impl Blueprint {
                 // no need to check brances where other robots can be build at this step
                 // nor earning resources
                 continue;
-            } 
+            }
 
+            // check unique branch where we buy obsidian robot
             if state.enough_resources(self.obsidian_robot_cost) {
                 let mut next_state = state.clone();
                 next_state.tick();
@@ -127,7 +129,7 @@ impl Blueprint {
                 // obsidian robot is also expensive enough
                 // so we can be sure to buy it if we can
                 continue;
-            } 
+            }
 
             // see what robots can be factored according to resources
             // with amount of resources in the state at the begining of the minute
@@ -136,13 +138,13 @@ impl Blueprint {
                 next_state.tick();
                 next_state.create_robot((0, 1, 0, 0), self.clay_robot_cost);
                 deq.push_back(next_state);
-            } 
+            }
             if state.enough_resources(self.ore_robot_cost) {
                 let mut next_state = state.clone();
                 next_state.tick();
                 next_state.create_robot((1, 0, 0, 0), self.ore_robot_cost);
                 deq.push_back(next_state);
-            } 
+            }
 
             // add current state too
             // as an option if strategy is to accumulate resources
