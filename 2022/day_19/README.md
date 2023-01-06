@@ -180,4 +180,4 @@ Determine the quality level of each blueprint using the largest number of geodes
 cat input.txt | cargo run --release
 ```
 
-Result: ``
+Result: `1389`
