@@ -186,13 +186,13 @@ fn main() {
             obsidian_robot_cost: (3, 14, 0, 0),
             geode_robot_cost: (2, 0, 7, 0),
         },
-        // Blueprint {
-        //     id: 2,
-        //     ore_robot_cost: (2, 0, 0, 0),
-        //     clay_robot_cost: (3, 0, 0, 0),
-        //     obsidian_robot_cost: (3, 8, 0, 0),
-        //     geode_robot_cost: (3, 0, 12, 0),
-        // },
+        Blueprint {
+            id: 2,
+            ore_robot_cost: (2, 0, 0, 0),
+            clay_robot_cost: (3, 0, 0, 0),
+            obsidian_robot_cost: (3, 8, 0, 0),
+            geode_robot_cost: (3, 0, 12, 0),
+        },
     ];
 
     let result = part_one(
