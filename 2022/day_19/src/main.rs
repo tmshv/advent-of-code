@@ -9,15 +9,15 @@ use regex::Regex;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct State {
-    time: u16,
-    ore: u16,
-    clay: u16,
-    obsidian: u16,
-    geode: u16,
-    ore_robots: u16,
-    clay_robots: u16,
-    obsidian_robots: u16,
-    geode_robots: u16,
+    time: u8,
+    ore: u8,
+    clay: u8,
+    obsidian: u8,
+    geode: u8,
+    ore_robots: u8,
+    clay_robots: u8,
+    obsidian_robots: u8,
+    geode_robots: u8,
 }
 
 impl State {
@@ -25,12 +25,12 @@ impl State {
         self.time > 0
     }
 
-    fn enough_resources(&self, cost: (u16, u16, u16, u16)) -> bool {
+    fn enough_resources(&self, cost: (u8, u8, u8, u8)) -> bool {
         let (ore, clay, obsidian, geode) = cost;
         self.ore >= ore && self.clay >= clay && self.obsidian >= obsidian && self.geode >= geode
     }
 
-    fn create_robot(&mut self, robot: (u16, u16, u16, u16), cost: (u16, u16, u16, u16)) {
+    fn create_robot(&mut self, robot: (u8, u8, u8, u8), cost: (u8, u8, u8, u8)) {
         // + robots
         self.ore_robots += robot.0;
         self.clay_robots += robot.1;
@@ -57,12 +57,12 @@ impl State {
 
 #[derive(Debug, Clone, PartialEq)]
 struct Blueprint {
-    id: u16,
+    id: u8,
 
-    ore_robot_cost: (u16, u16, u16, u16),
-    clay_robot_cost: (u16, u16, u16, u16),
-    obsidian_robot_cost: (u16, u16, u16, u16),
-    geode_robot_cost: (u16, u16, u16, u16),
+    ore_robot_cost: (u8, u8, u8, u8),
+    clay_robot_cost: (u8, u8, u8, u8),
+    obsidian_robot_cost: (u8, u8, u8, u8),
+    geode_robot_cost: (u8, u8, u8, u8),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -82,43 +82,43 @@ impl FromStr for Blueprint {
                     .get(1)
                     .unwrap()
                     .as_str()
-                    .parse::<u16>()
+                    .parse::<u8>()
                     .map_err(|_| ParseBlueprintError)?;
                 let ore_cost = cap
                     .get(2)
                     .unwrap()
                     .as_str()
-                    .parse::<u16>()
+                    .parse::<u8>()
                     .map_err(|_| ParseBlueprintError)?;
                 let clay_cost = cap
                     .get(3)
                     .unwrap()
                     .as_str()
-                    .parse::<u16>()
+                    .parse::<u8>()
                     .map_err(|_| ParseBlueprintError)?;
                 let obsidian_cost_ore = cap
                     .get(4)
                     .unwrap()
                     .as_str()
-                    .parse::<u16>()
+                    .parse::<u8>()
                     .map_err(|_| ParseBlueprintError)?;
                 let obsidian_cost_clay = cap
                     .get(5)
                     .unwrap()
                     .as_str()
-                    .parse::<u16>()
+                    .parse::<u8>()
                     .map_err(|_| ParseBlueprintError)?;
                 let geode_cost_ore = cap
                     .get(6)
                     .unwrap()
                     .as_str()
-                    .parse::<u16>()
+                    .parse::<u8>()
                     .map_err(|_| ParseBlueprintError)?;
                 let geode_cost_obsidian = cap
                     .get(7)
                     .unwrap()
                     .as_str()
-                    .parse::<u16>()
+                    .parse::<u8>()
                     .map_err(|_| ParseBlueprintError)?;
 
                 Ok(Blueprint {
@@ -134,7 +134,7 @@ impl FromStr for Blueprint {
 }
 
 impl Blueprint {
-    fn evaluate(&self, state: State) -> u16 {
+    fn evaluate(&self, state: State) -> u8 {
         let mut deq = VecDeque::from([state]);
         let mut seen = HashSet::<State>::new();
 
@@ -219,7 +219,7 @@ fn read_input() -> Vec<Blueprint> {
         .collect()
 }
 
-fn part_one(blueprints: &Vec<Blueprint>, state: State) -> u16 {
+fn part_one(blueprints: &Vec<Blueprint>, state: State) -> u8 {
     blueprints
         .iter()
         .map(|blueprint| {
