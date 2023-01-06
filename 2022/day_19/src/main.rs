@@ -1,13 +1,10 @@
 use std::{
-    cmp::Ordering,
-    collections::HashSet,
+    collections::{HashSet, VecDeque},
     fmt::Debug,
     io,
-    ops::{Add, Sub},
-    str::FromStr,
 };
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct State {
     time: u16,
     ore: u16,
@@ -60,70 +57,81 @@ struct Blueprint {
 
 impl Blueprint {
     fn evaluate(&self, state: State) -> u16 {
-        // end of recursion
-        // at the last minute just return total earned geode
-        if !state.has_time() {
-            // if state.geode > 5 || state.geode_robots > 2 {
-            //     println!("stop of good variant at M{} {:?}", minute, state);
-            // }
-            return state.geode;
-        }
-
-        // see what robots can be factored according to resources
-        // with amount of resources in the state at the begining of the minute
-        let mut next_states = Vec::new();
-        for (robot, can_build) in self.robots_to_build(&state).iter().enumerate() {
-            if *can_build {
-                let mut next_state = state.clone();
-                let (robots, resources) = match robot {
-                    0 => ((1, 0, 0, 0), self.ore_robot_cost),
-                    1 => ((0, 1, 0, 0), self.clay_robot_cost),
-                    2 => ((0, 0, 1, 0), self.obsidian_robot_cost),
-                    3 => ((0, 0, 0, 1), self.geode_robot_cost),
-                    _ => {
-                        panic!("unreachable");
-                    }
-                };
-
-                // + robots
-                next_state.ore_robots += robots.0;
-                next_state.clay_robots += robots.1;
-                next_state.obsidian_robots += robots.2;
-                next_state.geode_robots += robots.3;
-
-                // - resources
-                next_state.ore -= resources.0;
-                next_state.clay -= resources.1;
-                next_state.obsidian -= resources.2;
-                next_state.geode -= resources.3;
-
-                next_states.push(next_state);
-            }
-        }
-
-        // add current state too
-        // as an option if strategy is to accumulate resources
-        next_states.push(state.clone());
-
-        // end of minute
-        // add resource earned by robots
-        // using amount of robots from the state at the begining of the minute
-        for s in &mut next_states {
-            s.ore += state.ore_robots;
-            s.clay += state.clay_robots;
-            s.obsidian += state.obsidian_robots;
-            s.geode += state.geode_robots;
-            s.time -= 1;
-        }
+        let mut deq = VecDeque::from([state]);
+        let mut seen = HashSet::<State>::new();
 
         // evaluate new states starting from current amount of geode earned
         let mut max_geodes = state.geode;
-        // println!("M{} {:?}", minute, state);
-        for s in next_states {
-            let geodes = self.evaluate(s);
-            if geodes > max_geodes {
-                // println!("improve at M{} {:?}", minute, state);
-                max_geodes = geodes;
+        while deq.len() > 0 {
+            let state = deq.pop_front().unwrap();
+
+            if seen.contains(&state) {
+                continue;
+            } else {
+                seen.insert(state.clone());
+            }
+
+            // end of recursion
+            // at the last minute just return total earned geode
+            if !state.has_time() {
+                // if state.geode > 5 || state.geode_robots > 2 {
+                //     println!("stop of good variant at M{} {:?}", minute, state);
+                // }
+                // return state.geode;
+                continue;
+            }
+
+            if state.geode + state.geode_robots > max_geodes {
+                max_geodes = state.geode + state.geode_robots;
+            }
+
+            // see what robots can be factored according to resources
+            // with amount of resources in the state at the begining of the minute
+            let mut next_states = Vec::new();
+            for (robot, can_build) in self.robots_to_build(&state).iter().enumerate() {
+                if *can_build {
+                    let mut next_state = state.clone();
+                    let (robots, resources) = match robot {
+                        0 => ((1, 0, 0, 0), self.ore_robot_cost),
+                        1 => ((0, 1, 0, 0), self.clay_robot_cost),
+                        2 => ((0, 0, 1, 0), self.obsidian_robot_cost),
+                        3 => ((0, 0, 0, 1), self.geode_robot_cost),
+                        _ => {
+                            panic!("unreachable");
+                        }
+                    };
+
+                    // + robots
+                    next_state.ore_robots += robots.0;
+                    next_state.clay_robots += robots.1;
+                    next_state.obsidian_robots += robots.2;
+                    next_state.geode_robots += robots.3;
+
+                    // - resources
+                    next_state.ore -= resources.0;
+                    next_state.clay -= resources.1;
+                    next_state.obsidian -= resources.2;
+                    next_state.geode -= resources.3;
+
+                    next_states.push(next_state);
+                }
+            }
+
+            // add current state too
+            // as an option if strategy is to accumulate resources
+            next_states.push(state.clone());
+
+            // end of minute
+            // add resource earned by robots
+            // using amount of robots from the state at the begining of the minute
+            for s in &mut next_states {
+                s.ore += state.ore_robots;
+                s.clay += state.clay_robots;
+                s.obsidian += state.obsidian_robots;
+                s.geode += state.geode_robots;
+                s.time -= 1;
+
+                deq.push_back(*s);
             }
         }
         max_geodes
