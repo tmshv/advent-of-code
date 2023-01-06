@@ -55,7 +55,7 @@ impl State {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct Blueprint {
     id: u16,
 
@@ -257,6 +257,18 @@ mod tests {
     use crate::{Blueprint, State};
 
     #[test]
+    fn blueprint_from_str() {
+        let blueprint: Blueprint  = "Blueprint 18: Each ore robot costs 3 ore. Each clay robot costs 4 ore. Each obsidian robot costs 4 ore and 18 clay. Each geode robot costs 4 ore and 12 obsidian.".parse().unwrap();
+        assert_eq!(blueprint, Blueprint {
+            id: 18,
+            ore_robot_cost: (3, 0, 0, 0),
+            clay_robot_cost: (4, 0, 0, 0),
+            obsidian_robot_cost: (4, 18, 0, 0),
+            geode_robot_cost: (4, 0, 12, 0),
+        });
+    }
+
+    #[test]
     fn blueprint1_9geode() {
         let blueprint = Blueprint {
             id: 1,
@@ -278,6 +290,7 @@ mod tests {
         });
         assert_eq!(result, 9);
     }
+
     #[test]
     fn blueprint2_12geode() {
         let blueprint = Blueprint {
