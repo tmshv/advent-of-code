@@ -143,9 +143,9 @@ impl FromStr for Blueprint {
 
 impl Blueprint {
     fn evaluate(&self, state: State) -> u8 {
-        let mut deq = VecDeque::<State>::with_capacity(100_000_000);
+        let mut seen = HashSet::<State>::with_capacity(200_000_000);
+        let mut deq = VecDeque::<State>::with_capacity(200_000_000);
         deq.push_front(state);
-        let mut seen = HashSet::<State>::with_capacity(100_000_000);
 
         // evaluate new states starting from current amount of geode earned
         let mut max_geodes = state.geode;
