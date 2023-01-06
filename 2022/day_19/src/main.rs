@@ -276,41 +276,42 @@ fn part_two(blueprints: &Vec<Blueprint>, state: State) -> u16 {
 }
 
 fn main() {
-    // let blueprints = read_input();
+    let blueprints = read_input();
 
-    // let result = part_one(
-    //     &blueprints,
-    //     State {
-    //         time: 24,
-    //         ore: 0,
-    //         clay: 0,
-    //         obsidian: 0,
-    //         geode: 0,
-    //         ore_robots: 1,
-    //         clay_robots: 0,
-    //         obsidian_robots: 0,
-    //         geode_robots: 0,
-    //     },
-    // );
-    // println!("Part one: {}", result);
+    let result = part_one(
+        &blueprints,
+        State {
+            time: 24,
+            ore: 0,
+            clay: 0,
+            obsidian: 0,
+            geode: 0,
+            ore_robots: 1,
+            clay_robots: 0,
+            obsidian_robots: 0,
+            geode_robots: 0,
+        },
+    );
+    println!("Part one: {}", result);
 
     let result = part_two(
-        &vec![
-            // Blueprint {
-            //     id: 1,
-            //     ore_robot_cost: (4, 0, 0, 0),
-            //     clay_robot_cost: (2, 0, 0, 0),
-            //     obsidian_robot_cost: (3, 14, 0, 0),
-            //     geode_robot_cost: (2, 0, 7, 0),
-            // },
-            Blueprint {
-                id: 2,
-                ore_robot_cost: (2, 0, 0, 0),
-                clay_robot_cost: (3, 0, 0, 0),
-                obsidian_robot_cost: (3, 8, 0, 0),
-                geode_robot_cost: (3, 0, 12, 0),
-            },
-        ],
+        &blueprints,
+        // &vec![
+        //     // Blueprint {
+        //     //     id: 1,
+        //     //     ore_robot_cost: (4, 0, 0, 0),
+        //     //     clay_robot_cost: (2, 0, 0, 0),
+        //     //     obsidian_robot_cost: (3, 14, 0, 0),
+        //     //     geode_robot_cost: (2, 0, 7, 0),
+        //     // },
+        //     Blueprint {
+        //         id: 2,
+        //         ore_robot_cost: (2, 0, 0, 0),
+        //         clay_robot_cost: (3, 0, 0, 0),
+        //         obsidian_robot_cost: (3, 8, 0, 0),
+        //         geode_robot_cost: (3, 0, 12, 0),
+        //     },
+        // ],
         State {
             time: 32,
             ore: 0,

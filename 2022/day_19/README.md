@@ -401,4 +401,4 @@ Don't worry about quality levels; instead, just determine the largest number of 
 cat input.txt | cargo run --release
 ```
 
-Result: ``
+Result: `3003`
