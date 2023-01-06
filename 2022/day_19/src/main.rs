@@ -118,6 +118,17 @@ impl Blueprint {
                 continue;
             } 
 
+            if state.enough_resources(self.obsidian_robot_cost) {
+                let mut next_state = state.clone();
+                next_state.tick();
+                next_state.create_robot((0, 0, 1, 0), self.obsidian_robot_cost);
+                deq.push_front(next_state);
+
+                // obsidian robot is also expensive enough
+                // so we can be sure to buy it if we can
+                continue;
+            } 
+
             // see what robots can be factored according to resources
             // with amount of resources in the state at the begining of the minute
             for (robot, can_build) in self.robots_to_build(&state).iter().enumerate() {
@@ -126,7 +137,6 @@ impl Blueprint {
                     let (robot, cost) = match robot {
                         0 => ((1, 0, 0, 0), self.ore_robot_cost),
                         1 => ((0, 1, 0, 0), self.clay_robot_cost),
-                        2 => ((0, 0, 1, 0), self.obsidian_robot_cost),
                         _ => {
                             panic!("unreachable");
                         }
@@ -146,11 +156,10 @@ impl Blueprint {
         max_geodes
     }
 
-    fn robots_to_build(&self, state: &State) -> [bool; 3] {
+    fn robots_to_build(&self, state: &State) -> [bool; 2] {
         [
             state.enough_resources(self.ore_robot_cost),
             state.enough_resources(self.clay_robot_cost),
-            state.enough_resources(self.obsidian_robot_cost),
         ]
     }
 }
