@@ -40,6 +40,14 @@ impl State {
         self.obsidian -= cost.2;
         self.geode -= cost.3;
     }
+
+    fn tick(&mut self) {
+        self.ore += self.ore_robots;
+        self.clay += self.clay_robots;
+        self.obsidian += self.obsidian_robots;
+        self.geode += self.geode_robots;
+        self.time -= 1;
+    }
 }
 
 // #[derive(Debug, PartialEq, Eq)]
@@ -101,7 +109,6 @@ impl Blueprint {
 
             // see what robots can be factored according to resources
             // with amount of resources in the state at the begining of the minute
-            let mut next_states = Vec::new();
             for (robot, can_build) in self.robots_to_build(&state).iter().enumerate() {
                 if *can_build {
                     let mut next_state = state.clone();
@@ -114,27 +121,17 @@ impl Blueprint {
                             panic!("unreachable");
                         }
                     };
+                    next_state.tick();
                     next_state.create_robot(robot, cost);
-                    next_states.push(next_state);
+                    deq.push_back(next_state);
                 }
             }
 
             // add current state too
             // as an option if strategy is to accumulate resources
-            next_states.push(state.clone());
-
-            // end of minute
-            // add resource earned by robots
-            // using amount of robots from the state at the begining of the minute
-            for s in &mut next_states {
-                s.ore += state.ore_robots;
-                s.clay += state.clay_robots;
-                s.obsidian += state.obsidian_robots;
-                s.geode += state.geode_robots;
-                s.time -= 1;
-
-                deq.push_back(*s);
-            }
+            let mut no_robot_state = state.clone();
+            no_robot_state.tick();
+            deq.push_back(no_robot_state);
         }
         max_geodes
     }
@@ -253,5 +250,135 @@ mod tests {
             geode_robots: 0,
         });
         assert_eq!(result, 12);
+    }
+
+    #[test]
+    fn state_has_time() {
+        let mut state = State {
+            ore: 0,
+            clay: 0,
+            obsidian: 0,
+            geode: 0,
+            ore_robots: 1,
+            clay_robots: 0,
+            obsidian_robots: 0,
+            geode_robots: 0,
+            time: 24,
+        };
+        assert_eq!(state.has_time(), true);
+        let mut trues = [false; 24];
+        for (i, _) in (0..24).enumerate() {
+            trues[i] = state.has_time();
+            state.tick();
+        }
+        assert_eq!(trues.iter().all(|x| *x), true);
+        assert_eq!(state.has_time(), false);
+    }
+
+    #[test]
+    fn state_create_robot() {
+        let mut state = State {
+            ore: 7,
+            clay: 8,
+            obsidian: 14,
+            geode: 0,
+            ore_robots: 1,
+            clay_robots: 0,
+            obsidian_robots: 0,
+            geode_robots: 0,
+            time: 11,
+        };
+        state.create_robot((0, 0, 0, 1), (2, 0, 7, 0));
+        assert_eq!(
+            state,
+            State {
+                ore: 5,
+                clay: 8,
+                obsidian: 7,
+                geode: 0,
+                ore_robots: 1,
+                clay_robots: 0,
+                obsidian_robots: 0,
+                geode_robots: 1,
+                time: 11,
+            }
+        );
+        state.create_robot((0, 0, 1, 0), (3, 4, 0, 0));
+        assert_eq!(
+            state,
+            State {
+                ore: 2,
+                clay: 4,
+                obsidian: 7,
+                geode: 0,
+                ore_robots: 1,
+                clay_robots: 0,
+                obsidian_robots: 1,
+                geode_robots: 1,
+                time: 11,
+            }
+        );
+    }
+
+    #[test]
+    fn state_enough_resources() {
+        let state = State {
+            ore: 7,
+            clay: 8,
+            obsidian: 14,
+            geode: 0,
+            ore_robots: 1,
+            clay_robots: 0,
+            obsidian_robots: 0,
+            geode_robots: 0,
+            time: 11,
+        };
+        assert_eq!(state.enough_resources((2, 0, 7, 0)), true);
+        assert_eq!(state.enough_resources((2, 9, 7, 0)), false);
+    }
+
+    #[test]
+    fn state_tick() {
+        let mut state = State {
+            ore: 7,
+            clay: 8,
+            obsidian: 14,
+            geode: 0,
+            ore_robots: 2,
+            clay_robots: 4,
+            obsidian_robots: 3,
+            geode_robots: 1,
+            time: 10,
+        };
+        state.tick();
+        assert_eq!(
+            state,
+            State {
+                ore: 9,
+                clay: 12,
+                obsidian: 17,
+                geode: 1,
+                ore_robots: 2,
+                clay_robots: 4,
+                obsidian_robots: 3,
+                geode_robots: 1,
+                time: 9,
+            }
+        );
+        state.tick();
+        assert_eq!(
+            state,
+            State {
+                ore: 11,
+                clay: 16,
+                obsidian: 20,
+                geode: 2,
+                ore_robots: 2,
+                clay_robots: 4,
+                obsidian_robots: 3,
+                geode_robots: 1,
+                time: 8,
+            }
+        );
     }
 }
