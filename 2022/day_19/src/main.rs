@@ -149,6 +149,7 @@ impl Blueprint {
 
         // evaluate new states starting from current amount of geode earned
         let mut max_geodes = state.geode;
+        let mut max_at_time = state.time;
 
         while deq.len() > 0 {
             if deq.len() % 1000000 == 0 {
@@ -172,6 +173,12 @@ impl Blueprint {
             let geodes = state.geode + state.geode_robots;
             if geodes > max_geodes {
                 max_geodes = geodes;
+                max_at_time = state.time;
+            }
+
+            // skip state if it waste more time than best and earned less geodes
+            if state.time > max_at_time && state.geode + state.geode_robots < max_geodes {
+                continue;
             }
 
             // check unique branch where we buy geode robot
