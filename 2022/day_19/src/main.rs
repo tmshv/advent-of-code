@@ -220,13 +220,13 @@ fn read_input() -> Vec<Blueprint> {
 }
 
 fn part_one(blueprints: &Vec<Blueprint>, state: State) -> u16 {
-    let mut result = 0;
-    for blueprint in blueprints {
-        let geodes_earned = blueprint.evaluate(state);
-        let level = blueprint.id * geodes_earned;
-        result += level;
-    }
-    result
+    blueprints
+        .iter()
+        .map(|blueprint| {
+            let geodes_earned = blueprint.evaluate(state);
+            blueprint.id * geodes_earned
+        })
+        .sum()
 }
 
 fn main() {
