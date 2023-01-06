@@ -2,7 +2,10 @@ use std::{
     collections::{HashSet, VecDeque},
     fmt::Debug,
     io,
+    str::FromStr,
 };
+
+use regex::Regex;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct State {
@@ -52,23 +55,6 @@ impl State {
     }
 }
 
-// #[derive(Debug, PartialEq, Eq)]
-// struct ParseVoxelError;
-
-// impl FromStr for Voxel {
-//     type Err = ParseVoxelError;
-//     fn from_str(s: &str) -> Result<Self, Self::Err> {
-//         let parts = s.split(',').collect::<Vec<&str>>();
-//         if parts.len() != 3 {
-//             return Err(ParseVoxelError);
-//         }
-//         let x = parts[0].parse::<i32>().map_err(|_| ParseVoxelError)?;
-//         let y = parts[1].parse::<i32>().map_err(|_| ParseVoxelError)?;
-//         let z = parts[2].parse::<i32>().map_err(|_| ParseVoxelError)?;
-//         Ok(Voxel::new(x, y, z))
-//     }
-// }
-
 #[derive(Debug, Clone)]
 struct Blueprint {
     id: u16,
@@ -77,6 +63,74 @@ struct Blueprint {
     clay_robot_cost: (u16, u16, u16, u16),
     obsidian_robot_cost: (u16, u16, u16, u16),
     geode_robot_cost: (u16, u16, u16, u16),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct ParseBlueprintError;
+
+impl FromStr for Blueprint {
+    type Err = ParseBlueprintError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let pattern =
+            Regex::new(r"Blueprint (\d+): Each ore robot costs (\d+) ore. Each clay robot costs (\d+) ore. Each obsidian robot costs (\d+) ore and (\d+) clay. Each geode robot costs (\d+) ore and (\d+) obsidian.")
+                .unwrap();
+        let cap = pattern.captures(s);
+        match cap {
+            None => Err(ParseBlueprintError),
+            Some(cap) => {
+                let id = cap
+                    .get(1)
+                    .unwrap()
+                    .as_str()
+                    .parse::<u16>()
+                    .map_err(|_| ParseBlueprintError)?;
+                let ore_cost = cap
+                    .get(2)
+                    .unwrap()
+                    .as_str()
+                    .parse::<u16>()
+                    .map_err(|_| ParseBlueprintError)?;
+                let clay_cost = cap
+                    .get(3)
+                    .unwrap()
+                    .as_str()
+                    .parse::<u16>()
+                    .map_err(|_| ParseBlueprintError)?;
+                let obsidian_cost_ore = cap
+                    .get(4)
+                    .unwrap()
+                    .as_str()
+                    .parse::<u16>()
+                    .map_err(|_| ParseBlueprintError)?;
+                let obsidian_cost_clay = cap
+                    .get(5)
+                    .unwrap()
+                    .as_str()
+                    .parse::<u16>()
+                    .map_err(|_| ParseBlueprintError)?;
+                let geode_cost_ore = cap
+                    .get(6)
+                    .unwrap()
+                    .as_str()
+                    .parse::<u16>()
+                    .map_err(|_| ParseBlueprintError)?;
+                let geode_cost_obsidian = cap
+                    .get(7)
+                    .unwrap()
+                    .as_str()
+                    .parse::<u16>()
+                    .map_err(|_| ParseBlueprintError)?;
+
+                Ok(Blueprint {
+                    id,
+                    ore_robot_cost: (ore_cost, 0, 0, 0),
+                    clay_robot_cost: (clay_cost, 0, 0, 0),
+                    obsidian_robot_cost: (obsidian_cost_ore, obsidian_cost_clay, 0, 0),
+                    geode_robot_cost: (geode_cost_ore, 0, geode_cost_obsidian, 0),
+                })
+            }
+        }
+    }
 }
 
 impl Blueprint {
@@ -156,17 +210,17 @@ impl Blueprint {
     }
 }
 
-// fn read_input() -> Vec<Voxel> {
-//     io::stdin()
-//         .lines()
-//         .map(|line| match line {
-//             Err(error) => {
-//                 panic!("{}", error);
-//             }
-//             Ok(value) => value.as_str().parse::<Voxel>().unwrap(),
-//         })
-//         .collect()
-// }
+fn read_input() -> Vec<Blueprint> {
+    io::stdin()
+        .lines()
+        .map(|line| match line {
+            Err(error) => {
+                panic!("{}", error);
+            }
+            Ok(value) => value.as_str().parse::<Blueprint>().unwrap(),
+        })
+        .collect()
+}
 
 fn part_one(blueprints: &Vec<Blueprint>, state: State) -> u16 {
     let mut result = 0;
@@ -179,22 +233,7 @@ fn part_one(blueprints: &Vec<Blueprint>, state: State) -> u16 {
 }
 
 fn main() {
-    let blueprints = vec![
-        Blueprint {
-            id: 1,
-            ore_robot_cost: (4, 0, 0, 0),
-            clay_robot_cost: (2, 0, 0, 0),
-            obsidian_robot_cost: (3, 14, 0, 0),
-            geode_robot_cost: (2, 0, 7, 0),
-        },
-        Blueprint {
-            id: 2,
-            ore_robot_cost: (2, 0, 0, 0),
-            clay_robot_cost: (3, 0, 0, 0),
-            obsidian_robot_cost: (3, 8, 0, 0),
-            geode_robot_cost: (3, 0, 12, 0),
-        },
-    ];
+    let blueprints = read_input();
 
     let result = part_one(
         &blueprints,
