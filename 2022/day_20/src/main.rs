@@ -13,7 +13,7 @@ fn read_input() -> Vec<i32> {
 }
 
 fn mix(input: Vec<i32>) -> Vec<i32> {
-    let length = input.len() as i32;
+    // let length = input.len() as i32;
     let mut mix = input.clone();
 
     // order of mixing is based on INPUT
@@ -29,17 +29,18 @@ fn mix(input: Vec<i32>) -> Vec<i32> {
         for (j, value_in_mixed) in mix.iter().enumerate() {
             if value == value_in_mixed {
                 start = j;
-                let shift = j as i32 + value;
-                dest = if shift < 0 {
-                    // if length + shift == 0 {
-                    //     ((length + shift - 2) % length) as usize
-                    // } else {
-                    // }
-                    ((length + shift - 1) % length) as usize
-                } else {
-                    (shift % length) as usize
-                };
-                dest = dest;
+                dest = (j as i32 + value) as isize;
+                // let shift = j as i32 + value;
+                // dest = if shift < 0 {
+                //     // if length + shift == 0 {
+                //     //     ((length + shift - 2) % length) as usize
+                //     // } else {
+                //     // }
+                //     ((length + shift - 1) % length) as usize
+                // } else {
+                //     (shift % length) as usize
+                // };
+                // dest = dest;
             }
         }
 
@@ -62,12 +63,19 @@ fn mix(input: Vec<i32>) -> Vec<i32> {
     mix
 }
 
-fn swap(items: &mut Vec<i32>, start: usize, dest: usize) {
-    let dest = if dest > items.len() - 1 {
-        dest % items.len() + 1
+fn swap(items: &mut Vec<i32>, start: usize, dest: isize) {
+    let len = items.len() as isize;
+    let mut dest = if dest < 0 {
+        (len + dest - 1) as usize
+    } else if dest > len - 1 {
+        (dest % len + 1) as usize
     } else {
-        dest
+        dest as usize
     };
+
+    if dest == 0 {
+        dest = items.len() - 1;
+    }
 
     let value = items[start];
     items.remove(start);
@@ -131,7 +139,7 @@ mod tests {
     fn swap_negative() {
         let mut xs = vec![1, 2, -3, 3, -2, 0, 4];
         swap(&mut xs, 4, 0);
-        assert_eq!(xs, vec![-2, 1, 2, -3, 3, 0, 4]);
+        assert_eq!(xs, vec![1, 2, -3, 3, 0, 4, -2]);
     }
 
     #[test]
@@ -139,8 +147,21 @@ mod tests {
         let mut xs = vec![1, 2, -3, 0, 3, 4, -2];
 
         // 4 moves between -3 and 0:
-        swap(&mut xs, 5, 9);
+        swap(&mut xs, 5, 9); // add 4 to its index
         assert_eq!(xs, vec![1, 2, -3, 4, 0, 3, -2]);
+    }
+
+    #[test]
+    fn swap_negative_with_module() {
+        // -3 moves between -2 and 0:
+        let mut xs = vec![1, -3, 2, 3, -2, 0, 4];
+        swap(&mut xs, 1, -2); // -2 = 1 + -3
+        assert_eq!(xs, vec![1, 2, 3, -2, -3, 0, 4]);
+
+        // -2 moves between 4 and 1:
+        let mut xs = vec![1, 2, -2, -3, 0, 3, 4];
+        swap(&mut xs, 2, 0); // 4 = 2 + -2
+        assert_eq!(xs, vec![1, 2, -3, 0, 3, 4, -2]);
     }
 
     #[test]
@@ -177,11 +198,11 @@ mod tests {
         assert_eq!(xs, vec![1, 2, -3, 4, 0, 3, -2]);
     }
 
-    // #[test]
-    // fn mix_test_data() {
-    //     assert_eq!(
-    //         mix(vec![1, 2, -3, 3, -2, 0, 4]),
-    //         vec![1, 2, -3, 4, 0, 3, -2]
-    //     );
-    // }
+    #[test]
+    fn mix_test_data() {
+        assert_eq!(
+            mix(vec![1, 2, -3, 3, -2, 0, 4]),
+            vec![1, 2, -3, 4, 0, 3, -2]
+        );
+    }
 }
