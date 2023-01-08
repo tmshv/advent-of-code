@@ -82,9 +82,29 @@ fn swap(items: &mut Vec<i32>, start: usize, dest: isize) {
     items.insert(dest, value);
 }
 
+fn value_at(items: &Vec<i32>, start: usize, index: usize) -> i32 {
+    let i = (start + index) % items.len();
+    items[i]
+}
+
 fn part_one(input: Vec<i32>) -> i32 {
-    let mut mixed = mix(input);
-    0
+    let mixed = mix(input);
+
+    // find zero index
+    let mut zero = 0;
+    for (i, value) in mixed.iter().enumerate() {
+        if *value == 0 {
+            zero = i;
+            break;
+        }
+    }
+
+    // find groove coordinate at 1000th, 2000th, 3000th
+    let x = value_at(&mixed, zero, 1000);
+    let y = value_at(&mixed, zero, 2000);
+    let z = value_at(&mixed, zero, 3000);
+
+    x + y + z
 }
 
 fn main() {
@@ -96,7 +116,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::{mix, swap};
+    use crate::{mix, swap, value_at};
 
     #[test]
     fn vec_insert_at_index() {
@@ -204,5 +224,13 @@ mod tests {
             mix(vec![1, 2, -3, 3, -2, 0, 4]),
             vec![1, 2, -3, 4, 0, 3, -2]
         );
+    }
+
+    #[test]
+    fn value_at_1000() {
+        let xs = vec![1, 2, -3, 4, 0, 3, -2];
+        assert_eq!(value_at(&xs, 4, 1000), 4);
+        assert_eq!(value_at(&xs, 4, 2000), -3);
+        assert_eq!(value_at(&xs, 4, 3000), 2);
     }
 }
