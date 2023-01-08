@@ -128,6 +128,13 @@ mod tests {
     }
 
     #[test]
+    fn swap_negative() {
+        let mut xs = vec![1, 2, -3, 3, -2, 0, 4];
+        swap(&mut xs, 4, 0);
+        assert_eq!(xs, vec![-2, 1, 2, -3, 3, 0, 4]);
+    }
+
+    #[test]
     fn swap_positive_with_module() {
         let mut xs = vec![1, 2, -3, 0, 3, 4, -2];
 
