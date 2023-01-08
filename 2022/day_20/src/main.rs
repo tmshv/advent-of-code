@@ -129,11 +129,11 @@ mod tests {
 
     #[test]
     fn swap_positive_with_module() {
-        let start = 3;
-        let dest = 7;
-        let mut xs = vec![1, 2, -3, 3, -2, 0, 4];
-        swap(&mut xs, start, dest);
-        assert_eq!(xs, vec![3, 1, 2, -3, -2, 0, 4]);
+        let mut xs = vec![1, 2, -3, 0, 3, 4, -2];
+
+        // 4 moves between -3 and 0:
+        swap(&mut xs, 5, 9);
+        assert_eq!(xs, vec![1, 2, -3, 4, 0, 3, -2]);
     }
 
     #[test]
