@@ -13,7 +13,6 @@ fn read_input() -> Vec<i32> {
 }
 
 fn mix(input: Vec<i32>) -> Vec<i32> {
-    // let length = input.len() as i32;
     let mut mix = input.clone();
 
     // order of mixing is based on INPUT
@@ -30,31 +29,11 @@ fn mix(input: Vec<i32>) -> Vec<i32> {
             if value == value_in_mixed {
                 start = j;
                 dest = (j as i32 + value) as isize;
-                // let shift = j as i32 + value;
-                // dest = if shift < 0 {
-                //     // if length + shift == 0 {
-                //     //     ((length + shift - 2) % length) as usize
-                //     // } else {
-                //     // }
-                //     ((length + shift - 1) % length) as usize
-                // } else {
-                //     (shift % length) as usize
-                // };
-                // dest = dest;
+                break;
             }
         }
 
-        println!("mix {}: {} -> {}", value, start, dest);
-
-        print!("{:?}", mix);
-
         swap(&mut mix, start, dest);
-        // mix.remove(start);
-        // mix.insert(dest, *value);
-        // mix.swap(start, dest);
-
-        print!(" -> {:?}", mix);
-        println!("");
 
         // input.
         // 1, 2, -3, 3, -2, 0, 4,
@@ -64,15 +43,16 @@ fn mix(input: Vec<i32>) -> Vec<i32> {
 }
 
 fn swap(items: &mut Vec<i32>, start: usize, dest: isize) {
-    let len = items.len() as isize;
     let mut dest = if dest < 0 {
-        (len + dest - 1) as usize
-    } else if dest > len - 1 {
-        (dest % len + 1) as usize
+        (isize::MAX + dest - 1) as usize
     } else {
         dest as usize
     };
 
+    // i dont know why -1 but it works
+    dest = dest % (items.len() - 1);
+
+    // i dont know why but 0 destination should move at tne end
     if dest == 0 {
         dest = items.len() - 1;
     }
