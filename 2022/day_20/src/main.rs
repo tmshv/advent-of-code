@@ -47,9 +47,9 @@ fn mix(input: Vec<i32>) -> Vec<i32> {
 
         print!("{:?}", mix);
 
-        mix.remove(start);
-        mix.insert(dest, *value);
-
+        swap(&mut mix, start, dest);
+        // mix.remove(start);
+        // mix.insert(dest, *value);
         // mix.swap(start, dest);
 
         print!(" -> {:?}", mix);
@@ -62,7 +62,17 @@ fn mix(input: Vec<i32>) -> Vec<i32> {
     mix
 }
 
-// fn swap
+fn swap(items: &mut Vec<i32>, start: usize, dest: usize) {
+    let dest = if dest > items.len() - 1 {
+        dest % items.len() + 1
+    } else {
+        dest
+    };
+
+    let value = items[start];
+    items.remove(start);
+    items.insert(dest, value);
+}
 
 fn part_one(input: Vec<i32>) -> i32 {
     let mut mixed = mix(input);
@@ -78,7 +88,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::mix;
+    use crate::{mix, swap};
 
     #[test]
     fn vec_insert_at_index() {
@@ -103,25 +113,68 @@ mod tests {
     }
 
     #[test]
-    fn vec_insert_at_index_and_remove01() {
+    fn swap_positive() {
         let start = 0;
         let dest = 1;
-        //                s  d
         let mut xs = vec![1, 2, -3, 3, -2, 0, 4];
-        let value = xs[start];
-
-        xs.remove(start);
-        assert_eq!(xs, vec![2, -3, 3, -2, 0, 4]);
-
-        xs.insert(dest, value);
+        swap(&mut xs, start, dest);
         assert_eq!(xs, vec![2, 1, -3, 3, -2, 0, 4]);
+
+        let start = 2;
+        let dest = 5;
+        let mut xs = vec![1, 2, 3, -2, -3, 0, 4];
+        swap(&mut xs, start, dest);
+        assert_eq!(xs, vec![1, 2, -2, -3, 0, 3, 4]);
     }
 
     #[test]
-    fn mix_test_data() {
-        assert_eq!(
-            mix(vec![1, 2, -3, 3, -2, 0, 4]),
-            vec![1, 2, -3, 4, 0, 3, -2]
-        );
+    fn swap_positive_with_module() {
+        let start = 3;
+        let dest = 7;
+        let mut xs = vec![1, 2, -3, 3, -2, 0, 4];
+        swap(&mut xs, start, dest);
+        assert_eq!(xs, vec![3, 1, 2, -3, -2, 0, 4]);
     }
+
+    #[test]
+    fn swap_test_data() {
+        // Initial arrangement:
+        let mut xs = vec![1, 2, -3, 3, -2, 0, 4];
+
+        // 1 moves between 2 and -3:
+        swap(&mut xs, 0, 1);
+        assert_eq!(xs, vec![2, 1, -3, 3, -2, 0, 4]);
+
+        // 2 moves between -3 and 3:
+        swap(&mut xs, 0, 2);
+        assert_eq!(xs, vec![1, -3, 2, 3, -2, 0, 4]);
+
+        // -3 moves between -2 and 0:
+        swap(&mut xs, 1, 4);
+        assert_eq!(xs, vec![1, 2, 3, -2, -3, 0, 4]);
+
+        // 3 moves between 0 and 4:
+        swap(&mut xs, 2, 5);
+        assert_eq!(xs, vec![1, 2, -2, -3, 0, 3, 4]);
+
+        // -2 moves between 4 and 1:
+        swap(&mut xs, 2, 6);
+        assert_eq!(xs, vec![1, 2, -3, 0, 3, 4, -2]);
+
+        // 0 does not move:
+        swap(&mut xs, 3, 3);
+        assert_eq!(xs, vec![1, 2, -3, 0, 3, 4, -2]);
+
+        // 4 moves between -3 and 0:
+        swap(&mut xs, 5, 3);
+        assert_eq!(xs, vec![1, 2, -3, 4, 0, 3, -2]);
+    }
+
+    // #[test]
+    // fn mix_test_data() {
+    //     assert_eq!(
+    //         mix(vec![1, 2, -3, 3, -2, 0, 4]),
+    //         vec![1, 2, -3, 4, 0, 3, -2]
+    //     );
+    // }
 }
