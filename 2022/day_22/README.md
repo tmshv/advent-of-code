@@ -90,5 +90,5 @@ Follow the path given in the monkeys' notes. What is the final password?
 cat input.txt | cargo run --release
 ```
 
-Result: ``
+Result: `88268`
 

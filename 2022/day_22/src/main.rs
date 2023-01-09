@@ -27,6 +27,14 @@ impl Board {
         }
     }
 
+    fn width(&self) -> usize {
+        self.grid[0].len()
+    }
+
+    fn height(&self) -> usize {
+        self.grid.len()
+    }
+
     fn get_start(&self) -> (usize, usize) {
         for y in 0..200 {
             for x in 0..150 {
@@ -47,7 +55,7 @@ impl Board {
         if y == 0 || x == 0 {
             return Tile::Void;
         }
-        if y > self.grid.len() - 1 || x > self.grid[0].len() - 1 {
+        if y > self.grid.len() - 1 || x > self.width() - 1 {
             return Tile::Void;
         }
         self.grid[y][x]
@@ -77,7 +85,7 @@ impl Board {
         // teleport to right
         if sx < 0 && sy == 0 {
             let y = position.1;
-            for x in (position.0..self.grid[0].len()).rev() {
+            for x in (position.0..self.width()).rev() {
                 match self.tile_at((x, y)) {
                     Tile::Open => {
                         return (x, y);
@@ -113,7 +121,7 @@ impl Board {
         // teleport to bottom
         if sx == 0 && sy < 0 {
             let x = position.0;
-            for y in (0..position.1).rev() {
+            for y in (0..self.height()).rev() {
                 match self.tile_at((x, y)) {
                     Tile::Open => {
                         return (x, y);
@@ -128,7 +136,7 @@ impl Board {
             }
         }
 
-        // println!("teleport from {:?}", position);
+        println!("teleport wrong {:?}", position);
 
         position
     }
@@ -198,7 +206,6 @@ fn add(position: (usize, usize), shift: (isize, isize)) -> (usize, usize) {
 fn part_one(board: &Board, path: &Vec<Move>) -> usize {
     // 0. take start
     let mut position = board.get_start();
-    println!("starts from {:?}", position);
 
     let mut shift: (isize, isize) = (1, 0);
     let mut log = vec![(position, shift)];
@@ -249,38 +256,36 @@ fn part_one(board: &Board, path: &Vec<Move>) -> usize {
 
     // for y in 1..201 {
     //     for x in 1..151 {
-    for y in 1..13 {
-        for x in 1..17 {
-            let pos = (x, y);
-            let trace = log.iter().rev().position(|(p, s)| *p == pos);
-            let c = match trace {
-                None => {
-                    let tile = board.tile_at(pos);
-                    match tile {
-                        Tile::Void => ' ',
-                        Tile::Open => '.',
-                        Tile::Solid => '#',
-                    }
-                }
-                Some(trace) => {
-                    let shift = log[trace].1;
-                    match shift {
-                        (-1, 0) => '<',
-                        (1, 0) => '>',
-                        (0, -1) => '^',
-                        (0, 1) => 'v',
-                        _ => '%',
-                    }
-                }
-            };
-            print!("{}", c);
-        }
-        println!("");
-    }
+    // for y in 1..13 {
+    //     for x in 1..17 {
+    //         let pos = (x, y);
+    //         let trace = log.iter().rev().position(|(p, s)| *p == pos);
+    //         let c = match trace {
+    //             None => {
+    //                 let tile = board.tile_at(pos);
+    //                 match tile {
+    //                     Tile::Void => ' ',
+    //                     Tile::Open => '.',
+    //                     Tile::Solid => '#',
+    //                 }
+    //             }
+    //             Some(trace) => {
+    //                 let shift = log[trace].1;
+    //                 match shift {
+    //                     (-1, 0) => '<',
+    //                     (1, 0) => '>',
+    //                     (0, -1) => '^',
+    //                     (0, 1) => 'v',
+    //                     _ => '%',
+    //                 }
+    //             }
+    //         };
+    //         print!("{}", c);
+    //     }
+    //     println!("");
+    // }
 
     // 4. calculate score based on final position and move
-    println!("end at {:?} ({:?})", position, shift);
-
     let facing = match shift {
         (1, 0) => 0,
         (-1, 0) => 2,
