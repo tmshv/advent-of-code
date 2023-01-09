@@ -1,5 +1,5 @@
-use std::{collections::HashMap, io, str::FromStr};
 use regex::Regex;
+use std::{collections::HashMap, io, str::FromStr};
 
 #[derive(Debug, PartialEq, Eq)]
 enum Op {
@@ -87,11 +87,10 @@ fn eval(tree: &HashMap<&str, &Monkey>, key: &str) -> usize {
 
 fn part_one(items: &Vec<Monkey>) -> usize {
     // 1. items -> ast
-    let tree: HashMap<&str, &Monkey> =
-        HashMap::from_iter(items.iter().map(|monkey| {
-            let key = monkey.name.as_str();
-            (key, monkey)
-        }));
+    let tree: HashMap<&str, &Monkey> = HashMap::from_iter(items.iter().map(|monkey| {
+        let key = monkey.name.as_str();
+        (key, monkey)
+    }));
 
     // 2. eval ast
     eval(&tree, "root")
