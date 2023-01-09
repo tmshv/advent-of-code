@@ -1,6 +1,6 @@
 use std::io;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum Tile {
     Open,
     Solid,
@@ -16,8 +16,13 @@ enum Move {
 
 #[derive(Debug)]
 struct Board {
-    // grid: [[Tile; 150]; 200],
-    grid: Vec<Vec<Tile>>,
+    grid: [[Tile; 150]; 200],
+}
+
+impl Board {
+    fn get_start(&self) -> (usize, usize) {
+        (0, 0)
+    }
 }
 
 fn parse_path(path: String) -> Vec<Move> {
@@ -50,37 +55,40 @@ fn parse_path(path: String) -> Vec<Move> {
     moves
 }
 
-fn read_input() -> (Vec<Move>, Board) {
-    let mut board = Board { grid: Vec::new() };
+fn read_input() -> (Board, Vec<Move>) {
+    let mut board = Board { grid: [[Tile::Void; 150]; 200] };
 
-    for x in io::stdin().lines() {
-        let line = x.unwrap();
+    for (y, line) in io::stdin().lines().enumerate() {
+        let line = line.unwrap();
         if line.is_empty() {
             break;
         }
 
-        let y = board.grid.len();
-        board.grid.push(Vec::new());
-
-        for (_, t) in line.chars().enumerate() {
+        for (x, t) in line.chars().enumerate() {
             let tile = match t {
                 '.' => Tile::Open,
                 '#' => Tile::Solid,
                 ' ' => Tile::Void,
                 _ => panic!("unknown tile"),
             };
-            board.grid[y].push(tile);
+            board.grid[y][x] = tile;
         }
     }
 
     let path = io::stdin().lines().next().unwrap().unwrap();
     let moves = parse_path(path);
 
-    (moves, board)
+    (board, moves)
+}
+
+fn part_one(board: &Board, path: &Vec<Move>) -> usize {
+    0
 }
 
 fn main() {
-    let (path, board) = read_input();
-    println!("{:?}", board);
-    println!("{:?}", path);
+    let (board, path) = read_input();
+
+    let result = part_one(&board, &path);
+    println!("Part one: {}", result);
 }
+
