@@ -1,5 +1,9 @@
 use regex::Regex;
-use std::{collections::HashMap, io, str::FromStr};
+use std::{
+    collections::HashMap,
+    io,
+    str::FromStr,
+};
 
 #[derive(Debug, PartialEq, Eq)]
 enum Op {
