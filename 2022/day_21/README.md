@@ -53,5 +53,5 @@ However, your actual situation involves considerably more monkeys. What number w
 cat input.txt | cargo run --release
 ```
 
-Result: ``
+Result: `104272990112064`
 
