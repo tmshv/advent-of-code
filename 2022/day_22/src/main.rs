@@ -21,6 +21,17 @@ struct Board {
 
 impl Board {
     fn get_start(&self) -> (usize, usize) {
+        for y in 0..200 {
+            for x in 0..150 {
+                let tile = self.grid[y][x];
+                match tile {
+                    Tile::Open => {
+                        return (x, y);
+                    }
+                    _ => continue,
+                }
+            }
+        }
         (0, 0)
     }
 }
@@ -82,6 +93,8 @@ fn read_input() -> (Board, Vec<Move>) {
 }
 
 fn part_one(board: &Board, path: &Vec<Move>) -> usize {
+    let start = board.get_start();
+    println!("starts from {:?}", start);
     0
 }
 
