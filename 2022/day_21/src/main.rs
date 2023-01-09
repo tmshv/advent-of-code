@@ -15,7 +15,7 @@ enum Op {
 
 #[derive(Debug, PartialEq, Eq)]
 enum Job {
-    Number(usize),
+    Number(i32),
     Operation((Op, String, String)),
 }
 
@@ -40,7 +40,7 @@ impl FromStr for Monkey {
                 let name = cap.get(1).unwrap().as_str().to_string();
                 let job = match cap.get(3) {
                     Some(n) => {
-                        let number = n.as_str().parse::<usize>().unwrap();
+                        let number = n.as_str().parse::<i32>().unwrap();
                         Job::Number(number)
                     }
                     None => {
@@ -69,7 +69,7 @@ fn read_input() -> Vec<Monkey> {
         .collect()
 }
 
-fn eval(tree: &HashMap<&str, &Monkey>, key: &str) -> usize {
+fn eval(tree: &HashMap<&str, &Monkey>, key: &str) -> i32 {
     let monkey = tree.get(&key).unwrap();
 
     match &monkey.job {
@@ -89,7 +89,7 @@ fn eval(tree: &HashMap<&str, &Monkey>, key: &str) -> usize {
     }
 }
 
-fn part_one(items: &Vec<Monkey>) -> usize {
+fn part_one(items: &Vec<Monkey>) -> i32 {
     // 1. items -> ast
     let tree: HashMap<&str, &Monkey> = HashMap::from_iter(items.iter().map(|monkey| {
         let key = monkey.name.as_str();
