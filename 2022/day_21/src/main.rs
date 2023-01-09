@@ -1,5 +1,4 @@
-use std::{str::FromStr, io};
-
+use std::{collections::HashMap, io, str::FromStr};
 use regex::Regex;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -20,15 +19,6 @@ enum Job {
 struct Monkey {
     name: String,
     job: Job,
-}
-
-impl Monkey {
-    fn new_number(name: String, number: usize) -> Monkey {
-        Monkey {
-            name,
-            job: Job::Number(number),
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -69,12 +59,42 @@ impl FromStr for Monkey {
 }
 
 fn read_input() -> Vec<Monkey> {
-    io::stdin().lines().map(|line| line.expect("monkey string").parse::<Monkey>().unwrap()).collect()
+    io::stdin()
+        .lines()
+        .map(|line| line.expect("monkey string").parse::<Monkey>().unwrap())
+        .collect()
+}
+
+fn eval(tree: &HashMap<&str, &Monkey>, key: &str) -> usize {
+    let monkey = tree.get(&key).unwrap();
+
+    match &monkey.job {
+        Job::Number(n) => *n,
+        Job::Operation(job) => {
+            let (op, key_a, key_b) = job;
+            let a = eval(tree, key_a);
+            let b = eval(tree, key_b);
+
+            match op {
+                Op::Add => a + b,
+                Op::Sub => a - b,
+                Op::Div => a / b,
+                Op::Mul => a * b,
+            }
+        }
+    }
 }
 
 fn part_one(items: &Vec<Monkey>) -> usize {
-    println!("{:?}", items);
-    0
+    // 1. items -> ast
+    let tree: HashMap<&str, &Monkey> =
+        HashMap::from_iter(items.iter().map(|monkey| {
+            let key = monkey.name.as_str();
+            (key, monkey)
+        }));
+
+    // 2. eval ast
+    eval(&tree, "root")
 }
 
 fn main() {
