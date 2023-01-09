@@ -203,6 +203,37 @@ fn add(position: (usize, usize), shift: (isize, isize)) -> (usize, usize) {
     ((x as isize + sx) as usize, (y as isize + sy) as usize)
 }
 
+fn print_path(board: &Board, path: &Vec<((usize, usize), (isize, isize))>, max_x: usize, max_y: usize) {
+    for y in 1..max_y {
+        for x in 1..max_x {
+            let pos = (x, y);
+            let trace = path.iter().rev().position(|(p, s)| *p == pos);
+            let c = match trace {
+                None => {
+                    let tile = board.tile_at(pos);
+                    match tile {
+                        Tile::Void => ' ',
+                        Tile::Open => '.',
+                        Tile::Solid => '#',
+                    }
+                }
+                Some(trace) => {
+                    let shift = path[trace].1;
+                    match shift {
+                        (-1, 0) => '<',
+                        (1, 0) => '>',
+                        (0, -1) => '^',
+                        (0, 1) => 'v',
+                        _ => '%',
+                    }
+                }
+            };
+            print!("{}", c);
+        }
+        println!("");
+    }
+}
+
 fn part_one(board: &Board, path: &Vec<Move>) -> usize {
     // 0. take start
     let mut position = board.get_start();
@@ -254,36 +285,69 @@ fn part_one(board: &Board, path: &Vec<Move>) -> usize {
         }
     }
 
-    // for y in 1..201 {
-    //     for x in 1..151 {
-    // for y in 1..13 {
-    //     for x in 1..17 {
-    //         let pos = (x, y);
-    //         let trace = log.iter().rev().position(|(p, s)| *p == pos);
-    //         let c = match trace {
-    //             None => {
-    //                 let tile = board.tile_at(pos);
-    //                 match tile {
-    //                     Tile::Void => ' ',
-    //                     Tile::Open => '.',
-    //                     Tile::Solid => '#',
-    //                 }
-    //             }
-    //             Some(trace) => {
-    //                 let shift = log[trace].1;
-    //                 match shift {
-    //                     (-1, 0) => '<',
-    //                     (1, 0) => '>',
-    //                     (0, -1) => '^',
-    //                     (0, 1) => 'v',
-    //                     _ => '%',
-    //                 }
-    //             }
-    //         };
-    //         print!("{}", c);
-    //     }
-    //     println!("");
-    // }
+    // 4. calculate score based on final position and move
+    let facing = match shift {
+        (1, 0) => 0,
+        (-1, 0) => 2,
+        (0, -1) => 3,
+        (0, 1) => 1,
+        _ => 0,
+    };
+    1000 * position.1 + 4 * position.0 + facing
+}
+
+fn part_two(board: &Board, path: &Vec<Move>) -> usize {
+    // 0. take start
+    let mut position = board.get_start();
+
+    let mut shift: (isize, isize) = (1, 0);
+    let mut log = vec![(position, shift)];
+
+    // 1. iter over path
+    for m in path {
+        match m {
+            // 2. apply Straight move step by step
+            Move::Straight(steps) => {
+                for _ in 0..*steps {
+                    let next_position = add(position, shift);
+                    let tile = board.tile_at(next_position);
+                    match tile {
+                        Tile::Open => {
+                            // do a regular move
+                            position = next_position;
+
+                            // trace path
+                            log.push((position, shift));
+                        }
+                        Tile::Solid => {
+                            break; // it stuck in Solid
+                                   // stop moving step by step
+                        }
+                        Tile::Void => {
+                            // it going step in Void: teleport
+                            position = board.teleport_from(position, shift);
+
+                            // trace path
+                            log.push((position, shift));
+                        }
+                    }
+                }
+            }
+            // 3. apply Rotation move
+            // do it in complex numbers
+            // see link below for how it works
+            // https://www.youtube.com/watch?v=5PcpBw5Hbwo
+            // (PS: positive direction of Y is down)
+            Move::Left => {
+                shift = (shift.1, -shift.0);
+            }
+            Move::Right => {
+                shift = (-shift.1, shift.0);
+            }
+        }
+    }
+
+    print_path(board, &log, 17, 13);
 
     // 4. calculate score based on final position and move
     let facing = match shift {
@@ -301,4 +365,8 @@ fn main() {
 
     let result = part_one(&board, &path);
     println!("Part one: {}", result);
+
+    let result = part_two(&board, &path);
+    println!("Part two: {}", result);
 }
+
