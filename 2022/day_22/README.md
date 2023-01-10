@@ -179,5 +179,11 @@ Fold the map into a cube, then follow the path given in the monkeys' notes. What
 cat input.txt | cargo run --release
 ```
 
+dev:
+
+```sh
+watchexec -r -c --exts rs "cat test.txt | cargo run"
+```
+
 Result: ``
 
