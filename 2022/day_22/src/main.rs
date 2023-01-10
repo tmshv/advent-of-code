@@ -1,5 +1,234 @@
 use std::io;
 
+// X: 1 -> 50; 51 -> 100; 101 -> 150
+// Y: 1 -> 50; 51 -> 100; 101 -> 150; 151 -> 200
+// unique markers:
+// |||
+// X
+// ><
+// O
+// []
+// |
+// --
+#[allow(dead_code)]
+const CUBE_TEST: [(Edge, Edge); 7] = [
+    // 4 -> 6
+    (
+        Edge {
+            size: 4,
+            a: (12, 5),
+            n: (0, 1), // down
+        },
+        Edge {
+            size: 4,
+            a: (13, 9),
+            n: (1, 0), // right
+        },
+    ),
+    // 5 -> 2
+    (
+        Edge {
+            size: 4,
+            a: (12, 12),
+            n: (1, 0), // right
+        },
+        Edge {
+            size: 4,
+            a: (4, 8),
+            n: (-1, 0), // left
+        },
+        // Edge {
+        //     size: 4,
+        //     a: (1, 8),
+        //     n: (1, 0), // right
+        // },
+    ),
+    // 2 -> 11
+    (
+        Edge {
+            size: 4,
+            a: (101, 1),
+            // b: (101, 50),
+            n: (-1, 0), // left
+        },
+        Edge {
+            size: 4,
+            a: (51, 50),
+            // b: (100, 50),
+            n: (0, -1), // up
+        },
+    ),
+    // 8 -> 20
+    (
+        Edge {
+            size: 4,
+            a: (150, 51),
+            // b: (150, 100),
+            n: (1, 0), // right
+        },
+        Edge {
+            size: 4,
+            a: (100, 151),
+            // b: (100, 200),
+            n: (1, 0), // right
+        },
+    ),
+    // 5 -> 16
+    (
+        Edge {
+            size: 4,
+            a: (101, 100),
+            // b: (150, 100),
+            n: (0, 1), // down
+        },
+        Edge {
+            size: 4,
+            a: (100, 101),
+            // b: (100, 150),
+            n: (1, 0), // right
+        },
+    ),
+    // 10 -> 22
+    (
+        Edge {
+            size: 4,
+            a: (51, 51),
+            // b: (51, 100),
+            n: (-1, 0), // left
+        },
+        Edge {
+            size: 4,
+            a: (1, 151),
+            // b: (1, 200),
+            n: (-1, 0), // left
+        },
+    ),
+    // 14 -> 23
+    (
+        Edge {
+            size: 4,
+            a: (51, 101),
+            // b: (51, 150),
+            n: (-1, 0), // left
+        },
+        Edge {
+            size: 4,
+            a: (1, 150),
+            // b: (50, 150),
+            n: (0, -1), // up
+        },
+    ),
+];
+
+#[allow(dead_code)]
+const CUBE: [(Edge, Edge); 7] = [
+    // 3 -> 21
+    (
+        Edge {
+            size: 50,
+            a: (101, 1),
+            // b: (150, 1),
+            n: (0, -1), // up
+        },
+        Edge {
+            size: 50,
+            a: (1, 200),
+            // b: (50, 200),
+            n: (0, 1), // down
+        },
+    ),
+    // 4 -> 17
+    (
+        Edge {
+            size: 50,
+            a: (150, 1),
+            // b: (150, 50),
+            n: (1, 0), // right
+        },
+        Edge {
+            size: 50,
+            a: (51, 200),
+            // b: (100, 200),
+            n: (0, 1), // down
+        },
+    ),
+    // 2 -> 11
+    (
+        Edge {
+            size: 50,
+            a: (101, 1),
+            // b: (101, 50),
+            n: (-1, 0), // left
+        },
+        Edge {
+            size: 50,
+            a: (51, 50),
+            // b: (100, 50),
+            n: (0, -1), // up
+        },
+    ),
+    // 8 -> 20
+    (
+        Edge {
+            size: 50,
+            a: (150, 51),
+            // b: (150, 100),
+            n: (1, 0), // right
+        },
+        Edge {
+            size: 50,
+            a: (100, 151),
+            // b: (100, 200),
+            n: (1, 0), // right
+        },
+    ),
+    // 5 -> 16
+    (
+        Edge {
+            size: 50,
+            a: (101, 100),
+            // b: (150, 100),
+            n: (0, 1), // down
+        },
+        Edge {
+            size: 50,
+            a: (100, 101),
+            // b: (100, 150),
+            n: (1, 0), // right
+        },
+    ),
+    // 10 -> 22
+    (
+        Edge {
+            size: 50,
+            a: (51, 51),
+            // b: (51, 100),
+            n: (-1, 0), // left
+        },
+        Edge {
+            size: 50,
+            a: (1, 151),
+            // b: (1, 200),
+            n: (-1, 0), // left
+        },
+    ),
+    // 14 -> 23
+    (
+        Edge {
+            size: 50,
+            a: (51, 101),
+            // b: (51, 150),
+            n: (-1, 0), // left
+        },
+        Edge {
+            size: 50,
+            a: (1, 150),
+            // b: (50, 150),
+            n: (0, -1), // up
+        },
+    ),
+];
+
 #[derive(Debug, Clone, Copy)]
 enum Tile {
     Open,
@@ -140,6 +369,132 @@ impl Board {
 
         position
     }
+
+    fn teleport_on_edge(
+        &self,
+        position: (usize, usize),
+        cube: &[(Edge, Edge); 7],
+    ) -> ((usize, usize), (isize, isize)) {
+        let mut edge_from = cube[0].0;
+        let mut edge_to = cube[0].1;
+        for (a, b) in cube {
+            if a.contains(position) {
+                edge_from = *a;
+                edge_to = b.revert();
+                break;
+            }
+            if b.contains(position) {
+                edge_from = *b;
+                edge_to = a.revert();
+                break;
+            }
+        }
+
+        let relative = edge_from.get_relative(position);
+        let pos = edge_to.from_relative(relative);
+        let nor = edge_to.get_normal();
+
+        println!(
+            "E {:?} -> {:?} = {:?} -> {:?} N:{:?}",
+            edge_from.a, edge_to.a, position, pos, nor
+        );
+
+        (pos, nor)
+
+        // if position is on edge A
+        // then teleport it to edge B
+        // if edge_a.contains(position) {
+        //     let relative = edge_a.get_relative(position);
+        //     return (edge_b.from_relative(relative), edge_b.get_normal());
+        // }
+
+        // if position is on edge B
+        // then teleport it to edge A
+        // if edge_b.contains(position) {
+        //     let relative = edge_b.get_relative(position);
+        //     return (edge_a.from_relative(relative), edge_a.get_normal());
+        // }
+
+        // (self.teleport_from(position, shift), shift)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Edge {
+    size: usize,
+    // Edge is defined by coordinate A and shift N
+    a: (usize, usize),
+    n: (isize, isize),
+}
+
+impl Edge {
+    fn end(&self) -> (usize, usize) {
+        let size = (self.size - 1) as isize;
+        (
+            (self.a.0 as isize + self.n.0 * size) as usize,
+            (self.a.1 as isize + self.n.1 * size) as usize,
+        )
+    }
+
+    fn revert(&self) -> Edge {
+        let a = self.end();
+        let n = (self.n.0 * -1, self.n.1 * -1);
+        Edge {
+            size: self.size,
+            a,
+            n,
+        }
+    }
+
+    fn is_vertical(&self) -> bool {
+        // Y of A == Y of B
+        // self.a.1 == self.b.1
+        self.n.1 != 0
+    }
+
+    // normal of the edge is defined by counterclockwise 90 degrees rotation
+    fn get_normal(&self) -> (isize, isize) {
+        // (-self.n.1, self.n.0)
+        (self.n.1, -self.n.0)
+    }
+
+    fn contains(&self, position: (usize, usize)) -> bool {
+        let (px, py) = position;
+        let (ax, ay) = self.a;
+        // let (bx, by) = self.b;
+
+        if self.is_vertical() {
+            // X coordinate of edge and position should be equal
+            // todo: check for range within
+            return ax == px;
+        } else {
+            return ay == py;
+        }
+    }
+
+    fn get_relative(&self, position: (usize, usize)) -> isize {
+        let (px, py) = position;
+        let (ax, ay) = self.a;
+        if self.is_vertical() {
+            py as isize - ay as isize
+        } else {
+            px as isize - ax as isize
+        }
+    }
+
+    fn from_relative(&self, relative: isize) -> (usize, usize) {
+        let (ax, ay) = self.a;
+        let (nx, ny) = self.n;
+        if self.is_vertical() {
+            let x = ax;
+            let y = ay as isize + relative * ny;
+            (x, y as usize)
+        } else {
+            let x = ax as isize + relative * nx;
+            let y = ay;
+            (x as usize, y)
+        }
+    }
 }
 
 fn parse_path(path: String) -> Vec<Move> {
@@ -203,7 +558,12 @@ fn add(position: (usize, usize), shift: (isize, isize)) -> (usize, usize) {
     ((x as isize + sx) as usize, (y as isize + sy) as usize)
 }
 
-fn print_path(board: &Board, path: &Vec<((usize, usize), (isize, isize))>, max_x: usize, max_y: usize) {
+fn print_path(
+    board: &Board,
+    path: &Vec<((usize, usize), (isize, isize))>,
+    max_x: usize,
+    max_y: usize,
+) {
     for y in 1..max_y {
         for x in 1..max_x {
             let pos = (x, y);
@@ -220,11 +580,11 @@ fn print_path(board: &Board, path: &Vec<((usize, usize), (isize, isize))>, max_x
                 Some(trace) => {
                     let shift = path[trace].1;
                     match shift {
-                        (-1, 0) => '<',
-                        (1, 0) => '>',
-                        (0, -1) => '^',
-                        (0, 1) => 'v',
-                        _ => '%',
+                        // (-1, 0) => '<',
+                        // (1, 0) => '>',
+                        // (0, -1) => '^',
+                        // (0, 1) => 'v',
+                        _ => 'o',
                     }
                 }
             };
@@ -324,8 +684,10 @@ fn part_two(board: &Board, path: &Vec<Move>) -> usize {
                                    // stop moving step by step
                         }
                         Tile::Void => {
-                            // it going step in Void: teleport
-                            position = board.teleport_from(position, shift);
+                            // it going step in Void: teleport on cube polygon
+                            let (np, ns) = board.teleport_on_edge(position, &CUBE_TEST);
+                            position = np;
+                            shift = ns;
 
                             // trace path
                             log.push((position, shift));
@@ -369,4 +731,3 @@ fn main() {
     let result = part_two(&board, &path);
     println!("Part two: {}", result);
 }
-
