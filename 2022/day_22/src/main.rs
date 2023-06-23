@@ -229,6 +229,9 @@ const CUBE: [(Edge, Edge); 7] = [
     ),
 ];
 
+type Position = (usize, usize);
+type Shift = (isize, isize);
+
 #[derive(Debug, Clone, Copy)]
 enum Tile {
     Open,
@@ -264,7 +267,7 @@ impl Board {
         self.grid.len()
     }
 
-    fn get_start(&self) -> (usize, usize) {
+    fn get_start(&self) -> Position {
         for y in 0..200 {
             for x in 0..150 {
                 let tile = self.grid[y][x];
@@ -279,7 +282,7 @@ impl Board {
         (0, 0)
     }
 
-    fn tile_at(&self, position: (usize, usize)) -> Tile {
+    fn tile_at(&self, position: Position) -> Tile {
         let (x, y) = position;
         if y == 0 || x == 0 {
             return Tile::Void;
@@ -289,20 +292,37 @@ impl Board {
         }
         self.grid[y][x]
     }
+}
 
-    fn teleport_from(&self, position: (usize, usize), shift: (isize, isize)) -> (usize, usize) {
+trait Solver {
+    fn run(&self, position: Position, shift: Shift) -> (Position, Tile);
+    fn teleport(&self, position: Position, shift: Shift) -> (Position, Shift);
+}
+
+struct Flat<'a> {
+    board: &'a Board,
+}
+
+impl<'a> Solver for Flat<'a> {
+    fn run(&self, position: Position, shift: Shift) -> (Position, Tile) {
+        let next_position = add(position, shift);
+        let tile = self.board.tile_at(next_position);
+        (next_position, tile)
+    }
+
+    fn teleport(&self, position: Position, shift: Shift) -> (Position, Shift) {
         let (sx, sy) = shift;
 
         // teleport to left
         if sx > 0 && sy == 0 {
             let y = position.1;
             for x in 0..position.0 {
-                match self.tile_at((x, y)) {
+                match self.board.tile_at((x, y)) {
                     Tile::Open => {
-                        return (x, y);
+                        return ((x, y), shift);
                     }
                     Tile::Solid => {
-                        return position;
+                        return (position, shift);
                     }
                     _ => {
                         continue;
@@ -314,13 +334,13 @@ impl Board {
         // teleport to right
         if sx < 0 && sy == 0 {
             let y = position.1;
-            for x in (position.0..self.width()).rev() {
-                match self.tile_at((x, y)) {
+            for x in (position.0..self.board.width()).rev() {
+                match self.board.tile_at((x, y)) {
                     Tile::Open => {
-                        return (x, y);
+                        return ((x, y), shift);
                     }
                     Tile::Solid => {
-                        return position;
+                        return (position, shift);
                     }
                     _ => {
                         continue;
@@ -333,12 +353,12 @@ impl Board {
         if sx == 0 && sy > 0 {
             let x = position.0;
             for y in 0..position.1 {
-                match self.tile_at((x, y)) {
+                match self.board.tile_at((x, y)) {
                     Tile::Open => {
-                        return (x, y);
+                        return ((x, y), shift);
                     }
                     Tile::Solid => {
-                        return position;
+                        return (position, shift);
                     }
                     _ => {
                         continue;
@@ -350,13 +370,13 @@ impl Board {
         // teleport to bottom
         if sx == 0 && sy < 0 {
             let x = position.0;
-            for y in (0..self.height()).rev() {
-                match self.tile_at((x, y)) {
+            for y in (0..self.board.height()).rev() {
+                match self.board.tile_at((x, y)) {
                     Tile::Open => {
-                        return (x, y);
+                        return ((x, y), shift);
                     }
                     Tile::Solid => {
-                        return position;
+                        return (position, shift);
                     }
                     _ => {
                         continue;
@@ -365,19 +385,26 @@ impl Board {
             }
         }
 
-        println!("teleport wrong {:?}", position);
+        (position, shift)
+    }
+}
 
-        position
+struct Cube<'a> {
+    board: &'a Board,
+    cube: &'a [(Edge, Edge); 7],
+}
+
+impl<'a> Solver for Cube<'a> {
+    fn run(&self, position: Position, shift: Shift) -> (Position, Tile) {
+        let next_position = add(position, shift);
+        let tile = self.board.tile_at(next_position);
+        (next_position, tile)
     }
 
-    fn teleport_on_edge(
-        &self,
-        position: (usize, usize),
-        cube: &[(Edge, Edge); 7],
-    ) -> ((usize, usize), (isize, isize)) {
-        let mut edge_from = cube[0].0;
-        let mut edge_to = cube[0].1;
-        for (a, b) in cube {
+    fn teleport(&self, position: Position, shift: Shift) -> (Position, Shift) {
+        let mut edge_from = self.cube[0].0;
+        let mut edge_to = self.cube[0].1;
+        for (a, b) in self.cube {
             if a.contains(position) {
                 edge_from = *a;
                 edge_to = b.revert();
@@ -394,10 +421,10 @@ impl Board {
         let pos = edge_to.from_relative(relative);
         let nor = edge_to.get_normal();
 
-        println!(
-            "E {:?} -> {:?} = {:?} -> {:?} N:{:?}",
-            edge_from.a, edge_to.a, position, pos, nor
-        );
+        // println!(
+        //     "E {:?} -> {:?} = {:?} -> {:?} N:{:?}",
+        //     edge_from.a, edge_to.a, position, pos, nor
+        // );
 
         (pos, nor)
 
@@ -596,9 +623,42 @@ fn print_path(
 
 fn part_one(board: &Board, path: &Vec<Move>) -> usize {
     // 0. take start
-    let mut position = board.get_start();
+    let start = board.get_start();
+    let shift: Shift = (1, 0);
 
-    let mut shift: (isize, isize) = (1, 0);
+    let solver = Flat { board };
+
+    let (result, _) = solve(&solver, start, shift, path);
+    result
+}
+
+fn part_two(board: &Board, path: &Vec<Move>) -> usize {
+    // 0. take start
+    let start = board.get_start();
+    let shift: Shift = (1, 0);
+
+    let solver = Cube {
+        board,
+        cube: &CUBE_TEST,
+    };
+
+    let (result, log) = solve(&solver, start, shift, path);
+
+    // debug
+    print_path(board, &log, 17, 13);
+
+    result
+}
+
+fn solve<S: Solver>(
+    solver: &S,
+    start_postion: Position,
+    start_shift: Shift,
+    path: &Vec<Move>,
+) -> (usize, Vec<(Position, Shift)>) {
+    // 0. take start
+    let mut position = start_postion;
+    let mut shift = start_shift;
     let mut log = vec![(position, shift)];
 
     // 1. iter over path
@@ -607,8 +667,7 @@ fn part_one(board: &Board, path: &Vec<Move>) -> usize {
             // 2. apply Straight move step by step
             Move::Straight(steps) => {
                 for _ in 0..*steps {
-                    let next_position = add(position, shift);
-                    let tile = board.tile_at(next_position);
+                    let (next_position, tile) = solver.run(position, shift);
                     match tile {
                         Tile::Open => {
                             // do a regular move
@@ -623,71 +682,10 @@ fn part_one(board: &Board, path: &Vec<Move>) -> usize {
                         }
                         Tile::Void => {
                             // it going step in Void: teleport
-                            position = board.teleport_from(position, shift);
+                            let (next_position, next_shift) = solver.teleport(position, shift);
 
-                            // trace path
-                            log.push((position, shift));
-                        }
-                    }
-                }
-            }
-            // 3. apply Rotation move
-            // do it in complex numbers
-            // see link below for how it works
-            // https://www.youtube.com/watch?v=5PcpBw5Hbwo
-            // (PS: positive direction of Y is down)
-            Move::Left => {
-                shift = (shift.1, -shift.0);
-            }
-            Move::Right => {
-                shift = (-shift.1, shift.0);
-            }
-        }
-    }
-
-    // 4. calculate score based on final position and move
-    let facing = match shift {
-        (1, 0) => 0,
-        (-1, 0) => 2,
-        (0, -1) => 3,
-        (0, 1) => 1,
-        _ => 0,
-    };
-    1000 * position.1 + 4 * position.0 + facing
-}
-
-fn part_two(board: &Board, path: &Vec<Move>) -> usize {
-    // 0. take start
-    let mut position = board.get_start();
-
-    let mut shift: (isize, isize) = (1, 0);
-    let mut log = vec![(position, shift)];
-
-    // 1. iter over path
-    for m in path {
-        match m {
-            // 2. apply Straight move step by step
-            Move::Straight(steps) => {
-                for _ in 0..*steps {
-                    let next_position = add(position, shift);
-                    let tile = board.tile_at(next_position);
-                    match tile {
-                        Tile::Open => {
-                            // do a regular move
                             position = next_position;
-
-                            // trace path
-                            log.push((position, shift));
-                        }
-                        Tile::Solid => {
-                            break; // it stuck in Solid
-                                   // stop moving step by step
-                        }
-                        Tile::Void => {
-                            // it going step in Void: teleport on cube polygon
-                            let (np, ns) = board.teleport_on_edge(position, &CUBE_TEST);
-                            position = np;
-                            shift = ns;
+                            shift = next_shift;
 
                             // trace path
                             log.push((position, shift));
@@ -709,8 +707,6 @@ fn part_two(board: &Board, path: &Vec<Move>) -> usize {
         }
     }
 
-    print_path(board, &log, 17, 13);
-
     // 4. calculate score based on final position and move
     let facing = match shift {
         (1, 0) => 0,
@@ -719,7 +715,9 @@ fn part_two(board: &Board, path: &Vec<Move>) -> usize {
         (0, 1) => 1,
         _ => 0,
     };
-    1000 * position.1 + 4 * position.0 + facing
+    let result = 1000 * position.1 + 4 * position.0 + facing;
+
+    (result, log)
 }
 
 fn main() {
