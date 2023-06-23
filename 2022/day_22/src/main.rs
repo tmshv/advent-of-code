@@ -587,7 +587,7 @@ fn add(position: (usize, usize), shift: (isize, isize)) -> (usize, usize) {
 
 fn print_path(
     board: &Board,
-    path: &Vec<((usize, usize), (isize, isize))>,
+    path: &Vec<(Position, Shift)>,
     max_x: usize,
     max_y: usize,
 ) {
@@ -622,7 +622,6 @@ fn print_path(
 }
 
 fn part_one(board: &Board, path: &Vec<Move>) -> usize {
-    // 0. take start
     let start = board.get_start();
     let shift: Shift = (1, 0);
 
@@ -633,7 +632,6 @@ fn part_one(board: &Board, path: &Vec<Move>) -> usize {
 }
 
 fn part_two(board: &Board, path: &Vec<Move>) -> usize {
-    // 0. take start
     let start = board.get_start();
     let shift: Shift = (1, 0);
 
