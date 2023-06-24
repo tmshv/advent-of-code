@@ -1,4 +1,7 @@
-use std::io;
+use std::{
+    cmp::{max, min},
+    io,
+};
 
 // X: 1 -> 50; 51 -> 100; 101 -> 150
 // Y: 1 -> 50; 51 -> 100; 101 -> 150; 151 -> 200
@@ -12,7 +15,7 @@ use std::io;
 // --
 #[allow(dead_code)]
 const CUBE_TEST: [(Edge, Edge); 7] = [
-    // 4 -> 6
+    // A -> B
     (
         Edge {
             size: 4,
@@ -21,101 +24,86 @@ const CUBE_TEST: [(Edge, Edge); 7] = [
         },
         Edge {
             size: 4,
-            a: (13, 9),
-            n: (1, 0), // right
+            a: (16, 9),
+            n: (-1, 0), // left
         },
     ),
-    // 5 -> 2
+    // C -> D
     (
+        Edge {
+            size: 4,
+            a: (13, 12),
+            n: (1, 0), // right
+        },
+        Edge {
+            size: 4,
+            a: (1, 5),
+            n: (0, 1), // down
+        },
+    ),
+    // E -> F
+    (
+        Edge {
+            size: 4,
+            a: (1, 8),
+            n: (1, 0), // right
+        },
         Edge {
             size: 4,
             a: (12, 12),
-            n: (1, 0), // right
-        },
-        Edge {
-            size: 4,
-            a: (4, 8),
             n: (-1, 0), // left
         },
-        // Edge {
-        //     size: 4,
-        //     a: (1, 8),
-        //     n: (1, 0), // right
-        // },
     ),
-    // 2 -> 11
+    // G -> H
     (
         Edge {
             size: 4,
-            a: (101, 1),
-            // b: (101, 50),
-            n: (-1, 0), // left
-        },
-        Edge {
-            size: 4,
-            a: (51, 50),
-            // b: (100, 50),
-            n: (0, -1), // up
-        },
-    ),
-    // 8 -> 20
-    (
-        Edge {
-            size: 4,
-            a: (150, 51),
-            // b: (150, 100),
+            a: (5, 5),
             n: (1, 0), // right
         },
         Edge {
             size: 4,
-            a: (100, 151),
-            // b: (100, 200),
-            n: (1, 0), // right
+            a: (9, 1),
+            n: (0, 1), // down
         },
     ),
-    // 5 -> 16
+    // ? -> ?
     (
         Edge {
             size: 4,
-            a: (101, 100),
-            // b: (150, 100),
+            a: (12, 5),
             n: (0, 1), // down
         },
         Edge {
             size: 4,
-            a: (100, 101),
-            // b: (100, 150),
-            n: (1, 0), // right
-        },
-    ),
-    // 10 -> 22
-    (
-        Edge {
-            size: 4,
-            a: (51, 51),
-            // b: (51, 100),
-            n: (-1, 0), // left
-        },
-        Edge {
-            size: 4,
-            a: (1, 151),
-            // b: (1, 200),
+            a: (16, 9),
             n: (-1, 0), // left
         },
     ),
-    // 14 -> 23
+    // ? -> ?
     (
         Edge {
             size: 4,
-            a: (51, 101),
-            // b: (51, 150),
-            n: (-1, 0), // left
+            a: (12, 5),
+            n: (0, 1), // down
         },
         Edge {
             size: 4,
-            a: (1, 150),
-            // b: (50, 150),
-            n: (0, -1), // up
+            a: (16, 9),
+            n: (-1, 0), // left
+        },
+    ),
+    // ? -> ?
+    (
+        Edge {
+            size: 4,
+            a: (12, 5),
+            n: (0, 1), // down
+        },
+        Edge {
+            size: 4,
+            a: (16, 9),
+            n: (-1, 0), // left
         },
     ),
 ];
@@ -229,7 +217,7 @@ const CUBE: [(Edge, Edge); 7] = [
     ),
 ];
 
-type Position = (usize, usize);
+type Point = (usize, usize);
 type Shift = (isize, isize);
 
 #[derive(Debug, Clone, Copy)]
@@ -267,7 +255,7 @@ impl Board {
         self.grid.len()
     }
 
-    fn get_start(&self) -> Position {
+    fn get_start(&self) -> Point {
         for y in 0..200 {
             for x in 0..150 {
                 let tile = self.grid[y][x];
@@ -282,7 +270,7 @@ impl Board {
         (0, 0)
     }
 
-    fn tile_at(&self, position: Position) -> Tile {
+    fn tile_at(&self, position: Point) -> Tile {
         let (x, y) = position;
         if y == 0 || x == 0 {
             return Tile::Void;
@@ -295,8 +283,8 @@ impl Board {
 }
 
 trait Solver {
-    fn run(&self, position: Position, shift: Shift) -> (Position, Tile);
-    fn teleport(&self, position: Position, shift: Shift) -> (Position, Shift);
+    fn step(&self, position: Point, shift: Shift) -> (Point, Tile);
+    fn teleport(&self, position: Point, shift: Shift) -> Option<(Point, Shift)>;
 }
 
 struct Flat<'a> {
@@ -304,13 +292,13 @@ struct Flat<'a> {
 }
 
 impl<'a> Solver for Flat<'a> {
-    fn run(&self, position: Position, shift: Shift) -> (Position, Tile) {
+    fn step(&self, position: Point, shift: Shift) -> (Point, Tile) {
         let next_position = add(position, shift);
         let tile = self.board.tile_at(next_position);
         (next_position, tile)
     }
 
-    fn teleport(&self, position: Position, shift: Shift) -> (Position, Shift) {
+    fn teleport(&self, position: Point, shift: Shift) -> Option<(Point, Shift)> {
         let (sx, sy) = shift;
 
         // teleport to left
@@ -319,10 +307,10 @@ impl<'a> Solver for Flat<'a> {
             for x in 0..position.0 {
                 match self.board.tile_at((x, y)) {
                     Tile::Open => {
-                        return ((x, y), shift);
+                        return Some(((x, y), shift));
                     }
                     Tile::Solid => {
-                        return (position, shift);
+                        return Some((position, shift));
                     }
                     _ => {
                         continue;
@@ -337,10 +325,10 @@ impl<'a> Solver for Flat<'a> {
             for x in (position.0..self.board.width()).rev() {
                 match self.board.tile_at((x, y)) {
                     Tile::Open => {
-                        return ((x, y), shift);
+                        return Some(((x, y), shift));
                     }
                     Tile::Solid => {
-                        return (position, shift);
+                        return Some((position, shift));
                     }
                     _ => {
                         continue;
@@ -355,10 +343,10 @@ impl<'a> Solver for Flat<'a> {
             for y in 0..position.1 {
                 match self.board.tile_at((x, y)) {
                     Tile::Open => {
-                        return ((x, y), shift);
+                        return Some(((x, y), shift));
                     }
                     Tile::Solid => {
-                        return (position, shift);
+                        return Some((position, shift));
                     }
                     _ => {
                         continue;
@@ -373,10 +361,10 @@ impl<'a> Solver for Flat<'a> {
             for y in (0..self.board.height()).rev() {
                 match self.board.tile_at((x, y)) {
                     Tile::Open => {
-                        return ((x, y), shift);
+                        return Some(((x, y), shift));
                     }
                     Tile::Solid => {
-                        return (position, shift);
+                        return Some((position, shift));
                     }
                     _ => {
                         continue;
@@ -385,7 +373,7 @@ impl<'a> Solver for Flat<'a> {
             }
         }
 
-        (position, shift)
+        Some((position, shift))
     }
 }
 
@@ -395,67 +383,57 @@ struct Cube<'a> {
 }
 
 impl<'a> Solver for Cube<'a> {
-    fn run(&self, position: Position, shift: Shift) -> (Position, Tile) {
+    fn step(&self, position: Point, shift: Shift) -> (Point, Tile) {
         let next_position = add(position, shift);
         let tile = self.board.tile_at(next_position);
         (next_position, tile)
     }
 
-    fn teleport(&self, position: Position, shift: Shift) -> (Position, Shift) {
+    fn teleport(&self, position: Point, _: Shift) -> Option<(Point, Shift)> {
         let mut edge_from = self.cube[0].0;
         let mut edge_to = self.cube[0].1;
         for (a, b) in self.cube {
             if a.contains(position) {
                 edge_from = *a;
-                edge_to = b.revert();
+                edge_to = *b;
+                // .revert();
                 break;
             }
             if b.contains(position) {
                 edge_from = *b;
-                edge_to = a.revert();
+                edge_to = *a;
+                // .revert();
                 break;
             }
         }
 
         let relative = edge_from.get_relative(position);
-        let pos = edge_to.from_relative(relative);
-        let nor = edge_to.get_normal();
+        let next_position = edge_to.from_relative(relative);
+        let next_shift = edge_to.get_normal();
 
-        // println!(
-        //     "E {:?} -> {:?} = {:?} -> {:?} N:{:?}",
-        //     edge_from.a, edge_to.a, position, pos, nor
-        // );
+        println!(
+            "E{:?} -> E{:?} = {:?} [rel {:?}] -> {:?} N:{:?}",
+            edge_from.a, edge_to.a, position, relative, next_position, next_shift
+        );
 
-        (pos, nor)
-
-        // if position is on edge A
-        // then teleport it to edge B
-        // if edge_a.contains(position) {
-        //     let relative = edge_a.get_relative(position);
-        //     return (edge_b.from_relative(relative), edge_b.get_normal());
-        // }
-
-        // if position is on edge B
-        // then teleport it to edge A
-        // if edge_b.contains(position) {
-        //     let relative = edge_b.get_relative(position);
-        //     return (edge_a.from_relative(relative), edge_a.get_normal());
-        // }
-
-        // (self.teleport_from(position, shift), shift)
+        // Check if teleportation is blocked by obstacle
+        match self.board.tile_at(next_position) {
+            Tile::Solid => None,
+            _ => Some((next_position, next_shift)),
+        }
     }
 }
 
 #[derive(Debug, Clone, Copy)]
 struct Edge {
+    // Edge is defined by start coordinate A, direction N and size
     size: usize,
-    // Edge is defined by coordinate A and shift N
-    a: (usize, usize),
-    n: (isize, isize),
+    a: Point,
+    n: Shift,
 }
 
 impl Edge {
-    fn end(&self) -> (usize, usize) {
+    fn end(&self) -> Point {
         let size = (self.size - 1) as isize;
         (
             (self.a.0 as isize + self.n.0 * size) as usize,
@@ -480,36 +458,41 @@ impl Edge {
     }
 
     // normal of the edge is defined by counterclockwise 90 degrees rotation
-    fn get_normal(&self) -> (isize, isize) {
+    fn get_normal(&self) -> Shift {
         // (-self.n.1, self.n.0)
         (self.n.1, -self.n.0)
     }
 
-    fn contains(&self, position: (usize, usize)) -> bool {
+    // check position is within Edge
+    fn contains(&self, position: Point) -> bool {
+        let (x, y) = position;
+        let (a, b) = self.get_corners();
+
+        let x_min = min(a.0, b.0);
+        let x_max = max(a.0, b.0);
+        let y_min = min(a.1, b.1);
+        let y_max = max(a.1, b.1);
+
+        let h = x >= x_min && x <= x_max;
+        let v = y >= y_min && y <= y_max;
+        h && v
+    }
+
+    fn get_relative(&self, position: Point) -> isize {
         let (px, py) = position;
         let (ax, ay) = self.a;
-        // let (bx, by) = self.b;
-
+        let px = px as isize;
+        let py = py as isize;
+        let ax = ax as isize;
+        let ay = ay as isize;
         if self.is_vertical() {
-            // X coordinate of edge and position should be equal
-            // todo: check for range within
-            return ax == px;
+            (py - ay).abs()
         } else {
-            return ay == py;
+            (px - ax).abs()
         }
     }
 
-    fn get_relative(&self, position: (usize, usize)) -> isize {
-        let (px, py) = position;
-        let (ax, ay) = self.a;
-        if self.is_vertical() {
-            py as isize - ay as isize
-        } else {
-            px as isize - ax as isize
-        }
-    }
-
-    fn from_relative(&self, relative: isize) -> (usize, usize) {
+    fn from_relative(&self, relative: isize) -> Point {
         let (ax, ay) = self.a;
         let (nx, ny) = self.n;
         if self.is_vertical() {
@@ -521,6 +504,14 @@ impl Edge {
             let y = ay;
             (x as usize, y)
         }
+    }
+
+    fn get_corners(&self) -> (Point, Point) {
+        let size = self.size as isize - 1;
+        let x = self.a.0 as isize + (self.n.0 * size);
+        let y = self.a.1 as isize + (self.n.1 * size);
+        let b = (x as usize, y as usize);
+        (self.a, b)
     }
 }
 
@@ -579,18 +570,13 @@ fn read_input() -> (Board, Vec<Move>) {
     (board, moves)
 }
 
-fn add(position: (usize, usize), shift: (isize, isize)) -> (usize, usize) {
+fn add(position: Point, shift: Shift) -> Point {
     let (x, y) = position;
     let (sx, sy) = shift;
     ((x as isize + sx) as usize, (y as isize + sy) as usize)
 }
 
-fn print_path(
-    board: &Board,
-    path: &Vec<(Position, Shift)>,
-    max_x: usize,
-    max_y: usize,
-) {
+fn print_path(board: &Board, path: &Vec<(Point, Shift)>, max_x: usize, max_y: usize) {
     for y in 1..max_y {
         for x in 1..max_x {
             let pos = (x, y);
@@ -650,10 +636,10 @@ fn part_two(board: &Board, path: &Vec<Move>) -> usize {
 
 fn solve<S: Solver>(
     solver: &S,
-    start_postion: Position,
+    start_postion: Point,
     start_shift: Shift,
     path: &Vec<Move>,
-) -> (usize, Vec<(Position, Shift)>) {
+) -> (usize, Vec<(Point, Shift)>) {
     // 0. take start
     let mut position = start_postion;
     let mut shift = start_shift;
@@ -665,7 +651,7 @@ fn solve<S: Solver>(
             // 2. apply Straight move step by step
             Move::Straight(steps) => {
                 for _ in 0..*steps {
-                    let (next_position, tile) = solver.run(position, shift);
+                    let (next_position, tile) = solver.step(position, shift);
                     match tile {
                         Tile::Open => {
                             // do a regular move
@@ -679,14 +665,18 @@ fn solve<S: Solver>(
                                    // stop moving step by step
                         }
                         Tile::Void => {
-                            // it going step in Void: teleport
-                            let (next_position, next_shift) = solver.teleport(position, shift);
+                            // it going step in Void: teleporting
+                            println!("touching void at {:?}", next_position);
 
-                            position = next_position;
-                            shift = next_shift;
+                            if let Some(t) = solver.teleport(position, shift) {
+                                let (next_position, next_shift) = t;
 
-                            // trace path
-                            log.push((position, shift));
+                                position = next_position;
+                                shift = next_shift;
+
+                                // trace path
+                                log.push((position, shift));
+                            }
                         }
                     }
                 }
