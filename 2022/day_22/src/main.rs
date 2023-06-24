@@ -514,11 +514,7 @@ impl Edge {
     }
 
     fn get_corners(&self) -> (Point, Point) {
-        let size = self.size as isize - 1;
-        let x = self.a.0 as isize + (self.n.0 * size);
-        let y = self.a.1 as isize + (self.n.1 * size);
-        let b = (x as usize, y as usize);
-        (self.a, b)
+        (self.a, self.end())
     }
 }
 
