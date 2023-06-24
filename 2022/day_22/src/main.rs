@@ -612,7 +612,7 @@ fn solve<S: Solver>(
     solver: &S,
     start_postion: Point,
     start_shift: Shift,
-    path: &Vec<Move>,
+    moves: &Vec<Move>,
 ) -> (usize, Vec<(Point, Shift)>) {
     // 0. take start
     let mut position = start_postion;
@@ -620,7 +620,7 @@ fn solve<S: Solver>(
     let mut log = vec![(position, shift)];
 
     // 1. iter over path
-    for m in path {
+    for m in moves {
         match m {
             // 2. apply Straight move step by step
             Move::Straight(steps) => {
