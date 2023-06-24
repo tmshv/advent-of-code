@@ -382,13 +382,11 @@ impl<'a> Solver for Cube<'a> {
             if a.contains(position) {
                 edge_from = *a;
                 edge_to = *b;
-                // .revert();
                 break;
             }
             if b.contains(position) {
                 edge_from = *b;
                 edge_to = *a;
-                // .revert();
                 break;
             }
         }
@@ -425,16 +423,6 @@ impl Edge {
             (self.a.0 as isize + self.n.0 * size) as usize,
             (self.a.1 as isize + self.n.1 * size) as usize,
         )
-    }
-
-    fn revert(&self) -> Edge {
-        let a = self.end();
-        let n = (self.n.0 * -1, self.n.1 * -1);
-        Edge {
-            size: self.size,
-            a,
-            n,
-        }
     }
 
     fn is_vertical(&self) -> bool {
