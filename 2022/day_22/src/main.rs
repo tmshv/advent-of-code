@@ -21,11 +21,13 @@ const CUBE_TEST: [(Edge, Edge); 7] = [
             size: 4,
             a: (12, 5),
             n: (0, 1), // down
+            left: false,
         },
         Edge {
             size: 4,
             a: (16, 9),
             n: (-1, 0), // left
+            left: false,
         },
     ),
     // C -> D
@@ -34,11 +36,13 @@ const CUBE_TEST: [(Edge, Edge); 7] = [
             size: 4,
             a: (13, 12),
             n: (1, 0), // right
+            left: false,
         },
         Edge {
             size: 4,
             a: (1, 5),
             n: (0, 1), // down
+            left: false,
         },
     ),
     // E -> F
@@ -47,11 +51,13 @@ const CUBE_TEST: [(Edge, Edge); 7] = [
             size: 4,
             a: (1, 8),
             n: (1, 0), // right
+            left: false,
         },
         Edge {
             size: 4,
             a: (12, 12),
             n: (-1, 0), // left
+            left: false,
         },
     ),
     // G -> H
@@ -60,11 +66,13 @@ const CUBE_TEST: [(Edge, Edge); 7] = [
             size: 4,
             a: (5, 5),
             n: (1, 0), // right
+            left: false,
         },
         Edge {
             size: 4,
             a: (9, 1),
             n: (0, 1), // down
+            left: false,
         },
     ),
     // ? -> ?
@@ -73,24 +81,13 @@ const CUBE_TEST: [(Edge, Edge); 7] = [
             size: 1,
             a: (0, 0),
             n: (0, 0),
+            left: false,
         },
         Edge {
             size: 1,
             a: (0, 0),
             n: (0, 0),
-        },
-    ),
-    // ? -> ?
-    (
-        Edge {
-            size: 1,
-            a: (0, 0),
-            n: (0, 0),
-        },
-        Edge {
-            size: 1,
-            a: (0, 0),
-            n: (0, 0),
+            left: false,
         },
     ),
     // ? -> ?
@@ -99,11 +96,28 @@ const CUBE_TEST: [(Edge, Edge); 7] = [
             size: 1,
             a: (0, 0),
             n: (0, 0),
+            left: false,
         },
         Edge {
             size: 1,
             a: (0, 0),
             n: (0, 0),
+            left: false,
+        },
+    ),
+    // ? -> ?
+    (
+        Edge {
+            size: 1,
+            a: (0, 0),
+            n: (0, 0),
+            left: false,
+        },
+        Edge {
+            size: 1,
+            a: (0, 0),
+            n: (0, 0),
+            left: false,
         },
     ),
 ];
@@ -116,11 +130,13 @@ const CUBE: [(Edge, Edge); 7] = [
             size: 50,
             a: (100, 100),
             n: (0, -1), // up
+            left: false,
         },
         Edge {
             size: 50,
             a: (150, 50),
             n: (-1, 0), // left
+            left: true,
         },
     ),
     // B
@@ -129,11 +145,13 @@ const CUBE: [(Edge, Edge); 7] = [
             size: 50,
             a: (51, 51),
             n: (0, 1), // down
+            left: false,
         },
         Edge {
             size: 50,
             a: (1, 101),
             n: (1, 0), // right
+            left: true,
         },
     ),
     // C
@@ -142,11 +160,13 @@ const CUBE: [(Edge, Edge); 7] = [
             size: 50,
             a: (100, 150),
             n: (-1, 0), // left
+            left: true,
         },
         Edge {
             size: 50,
             a: (50, 200),
             n: (0, -1), // up
+            left: false,
         },
     ),
     // D
@@ -155,11 +175,13 @@ const CUBE: [(Edge, Edge); 7] = [
             size: 50,
             a: (51, 1),
             n: (0, 1), // down
+            left: false,
         },
         Edge {
             size: 50,
             a: (1, 150),
             n: (0, -1), // up
+            left: true,
         },
     ),
     // E
@@ -168,11 +190,13 @@ const CUBE: [(Edge, Edge); 7] = [
             size: 50,
             a: (100, 1),
             n: (-1, 0), // left
+            left: false,
         },
         Edge {
             size: 50,
             a: (1, 200),
             n: (0, -1), // up
+            left: true,
         },
     ),
     // F
@@ -181,11 +205,13 @@ const CUBE: [(Edge, Edge); 7] = [
             size: 50,
             a: (150, 1),
             n: (-1, 0), // left
+            left: false,
         },
         Edge {
             size: 50,
             a: (50, 200),
             n: (-1, 0), // left
+            left: true,
         },
     ),
     // G
@@ -194,11 +220,13 @@ const CUBE: [(Edge, Edge); 7] = [
             size: 50,
             a: (150, 1),
             n: (0, 1), // down
+            left: true,
         },
         Edge {
             size: 50,
             a: (100, 150),
             n: (0, -1), // up
+            left: false,
         },
     ),
 ];
@@ -393,7 +421,7 @@ impl<'a> Solver for Cube<'a> {
 
         let relative = edge_from.get_relative(position);
         let next_position = edge_to.from_relative(relative);
-        let next_shift = edge_to.get_normal();
+        let next_shift = edge_to.get_teleportation_shift();
 
         println!(
             "E{:?} -> E{:?} = {:?} [rel {:?}] -> {:?} N:{:?}",
@@ -414,6 +442,7 @@ struct Edge {
     size: usize,
     a: Point,
     n: Shift,
+    left: bool,
 }
 
 impl Edge {
@@ -432,9 +461,13 @@ impl Edge {
     }
 
     // normal of the edge is defined by counterclockwise 90 degrees rotation
-    fn get_normal(&self) -> Shift {
-        // (-self.n.1, self.n.0)
-        (self.n.1, -self.n.0)
+    // or by clockwise 90 degrees rotation if edge is LEFT oriented
+    fn get_teleportation_shift(&self) -> Shift {
+        if self.left {
+            (-self.n.1, self.n.0)
+        } else {
+            (self.n.1, -self.n.0)
+        }
     }
 
     // check position is within Edge
