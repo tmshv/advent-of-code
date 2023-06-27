@@ -185,5 +185,5 @@ dev:
 watchexec -r -c --exts rs "cat test.txt | cargo run"
 ```
 
-Result: ``
+Result: `124302`
 

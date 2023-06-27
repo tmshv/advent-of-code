@@ -21,13 +21,13 @@ const CUBE_TEST: [(Edge, Edge); 7] = [
             size: 4,
             a: (12, 5),
             n: (0, 1), // down
-            left: false,
+            clockwise: false,
         },
         Edge {
             size: 4,
             a: (16, 9),
             n: (-1, 0), // left
-            left: false,
+            clockwise: false,
         },
     ),
     // C -> D
@@ -36,13 +36,13 @@ const CUBE_TEST: [(Edge, Edge); 7] = [
             size: 4,
             a: (13, 12),
             n: (1, 0), // right
-            left: false,
+            clockwise: false,
         },
         Edge {
             size: 4,
             a: (1, 5),
             n: (0, 1), // down
-            left: false,
+            clockwise: false,
         },
     ),
     // E -> F
@@ -51,13 +51,13 @@ const CUBE_TEST: [(Edge, Edge); 7] = [
             size: 4,
             a: (1, 8),
             n: (1, 0), // right
-            left: false,
+            clockwise: false,
         },
         Edge {
             size: 4,
             a: (12, 12),
             n: (-1, 0), // left
-            left: false,
+            clockwise: false,
         },
     ),
     // G -> H
@@ -66,13 +66,13 @@ const CUBE_TEST: [(Edge, Edge); 7] = [
             size: 4,
             a: (5, 5),
             n: (1, 0), // right
-            left: false,
+            clockwise: false,
         },
         Edge {
             size: 4,
             a: (9, 1),
             n: (0, 1), // down
-            left: false,
+            clockwise: false,
         },
     ),
     // ? -> ?
@@ -81,28 +81,13 @@ const CUBE_TEST: [(Edge, Edge); 7] = [
             size: 1,
             a: (0, 0),
             n: (0, 0),
-            left: false,
+            clockwise: false,
         },
         Edge {
             size: 1,
             a: (0, 0),
             n: (0, 0),
-            left: false,
-        },
-    ),
-    // ? -> ?
-    (
-        Edge {
-            size: 1,
-            a: (0, 0),
-            n: (0, 0),
-            left: false,
-        },
-        Edge {
-            size: 1,
-            a: (0, 0),
-            n: (0, 0),
-            left: false,
+            clockwise: false,
         },
     ),
     // ? -> ?
@@ -111,13 +96,28 @@ const CUBE_TEST: [(Edge, Edge); 7] = [
             size: 1,
             a: (0, 0),
             n: (0, 0),
-            left: false,
+            clockwise: false,
         },
         Edge {
             size: 1,
             a: (0, 0),
             n: (0, 0),
-            left: false,
+            clockwise: false,
+        },
+    ),
+    // ? -> ?
+    (
+        Edge {
+            size: 1,
+            a: (0, 0),
+            n: (0, 0),
+            clockwise: false,
+        },
+        Edge {
+            size: 1,
+            a: (0, 0),
+            n: (0, 0),
+            clockwise: false,
         },
     ),
 ];
@@ -130,13 +130,13 @@ const CUBE: [(Edge, Edge); 7] = [
             size: 50,
             a: (100, 100),
             n: (0, -1), // up
-            left: false,
+            clockwise: false,
         },
         Edge {
             size: 50,
             a: (150, 50),
             n: (-1, 0), // left
-            left: true,
+            clockwise: true,
         },
     ),
     // B
@@ -145,13 +145,13 @@ const CUBE: [(Edge, Edge); 7] = [
             size: 50,
             a: (51, 51),
             n: (0, 1), // down
-            left: false,
+            clockwise: false,
         },
         Edge {
             size: 50,
             a: (1, 101),
             n: (1, 0), // right
-            left: true,
+            clockwise: true,
         },
     ),
     // C
@@ -160,13 +160,13 @@ const CUBE: [(Edge, Edge); 7] = [
             size: 50,
             a: (100, 150),
             n: (-1, 0), // left
-            left: true,
+            clockwise: true,
         },
         Edge {
             size: 50,
             a: (50, 200),
             n: (0, -1), // up
-            left: false,
+            clockwise: false,
         },
     ),
     // D
@@ -175,13 +175,13 @@ const CUBE: [(Edge, Edge); 7] = [
             size: 50,
             a: (51, 1),
             n: (0, 1), // down
-            left: false,
+            clockwise: false,
         },
         Edge {
             size: 50,
             a: (1, 150),
             n: (0, -1), // up
-            left: true,
+            clockwise: true,
         },
     ),
     // E
@@ -190,13 +190,13 @@ const CUBE: [(Edge, Edge); 7] = [
             size: 50,
             a: (100, 1),
             n: (-1, 0), // left
-            left: false,
+            clockwise: false,
         },
         Edge {
             size: 50,
             a: (1, 200),
             n: (0, -1), // up
-            left: true,
+            clockwise: true,
         },
     ),
     // F
@@ -205,13 +205,13 @@ const CUBE: [(Edge, Edge); 7] = [
             size: 50,
             a: (150, 1),
             n: (-1, 0), // left
-            left: false,
+            clockwise: false,
         },
         Edge {
             size: 50,
             a: (50, 200),
             n: (-1, 0), // left
-            left: true,
+            clockwise: true,
         },
     ),
     // G
@@ -220,13 +220,13 @@ const CUBE: [(Edge, Edge); 7] = [
             size: 50,
             a: (150, 1),
             n: (0, 1), // down
-            left: true,
+            clockwise: true,
         },
         Edge {
             size: 50,
             a: (100, 150),
             n: (0, -1), // up
-            left: false,
+            clockwise: false,
         },
     ),
 ];
@@ -241,7 +241,7 @@ enum Tile {
     Void,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum Move {
     Straight(usize),
     Left,
@@ -270,8 +270,8 @@ impl Board {
     }
 
     fn get_start(&self) -> Point {
-        for y in 0..200 {
-            for x in 0..150 {
+        for y in 0..self.height() {
+            for x in 0..self.width() {
                 let tile = self.grid[y][x];
                 match tile {
                     Tile::Open => {
@@ -403,16 +403,19 @@ impl<'a> Solver for Cube<'a> {
         (next_position, tile)
     }
 
-    fn teleport(&self, position: Point, _: Shift) -> Option<(Point, Shift)> {
+    fn teleport(&self, position: Point, shift: Shift) -> Option<(Point, Shift)> {
         let mut edge_from = self.cube[0].0;
         let mut edge_to = self.cube[0].1;
         for (a, b) in self.cube {
-            if a.contains(position) {
+            // point is on the edge and this edge is orthogonal to move
+            if a.contains(position) && a.scalar(shift) == 0 {
                 edge_from = *a;
                 edge_to = *b;
                 break;
             }
-            if b.contains(position) {
+
+            // point is on the edge and this edge is orthogonal to move
+            if b.contains(position) && b.scalar(shift) == 0 {
                 edge_from = *b;
                 edge_to = *a;
                 break;
@@ -422,11 +425,6 @@ impl<'a> Solver for Cube<'a> {
         let relative = edge_from.get_relative(position);
         let next_position = edge_to.from_relative(relative);
         let next_shift = edge_to.get_teleportation_shift();
-
-        println!(
-            "E{:?} -> E{:?} = {:?} [rel {:?}] -> {:?} N:{:?}",
-            edge_from.a, edge_to.a, position, relative, next_position, next_shift
-        );
 
         // Check if teleportation is blocked by obstacle
         match self.board.tile_at(next_position) {
@@ -442,7 +440,7 @@ struct Edge {
     size: usize,
     a: Point,
     n: Shift,
-    left: bool,
+    clockwise: bool,
 }
 
 impl Edge {
@@ -463,11 +461,15 @@ impl Edge {
     // normal of the edge is defined by counterclockwise 90 degrees rotation
     // or by clockwise 90 degrees rotation if edge is LEFT oriented
     fn get_teleportation_shift(&self) -> Shift {
-        if self.left {
+        if self.clockwise {
             (-self.n.1, self.n.0)
         } else {
             (self.n.1, -self.n.0)
         }
+    }
+
+    fn scalar(&self, shift: Shift) -> isize {
+        self.n.0 * shift.0 + self.n.1 * shift.1
     }
 
     // check position is within Edge
@@ -583,7 +585,7 @@ fn print_path(board: &Board, path: &Vec<(Point, Shift)>, max_x: usize, max_y: us
     for y in 1..max_y {
         for x in 1..max_x {
             let pos = (x, y);
-            let trace = path.iter().rev().position(|(p, s)| *p == pos);
+            let trace = path.iter().rev().find(|(p, _)| *p == pos);
             let c = match trace {
                 None => {
                     let tile = board.tile_at(pos);
@@ -594,12 +596,12 @@ fn print_path(board: &Board, path: &Vec<(Point, Shift)>, max_x: usize, max_y: us
                     }
                 }
                 Some(trace) => {
-                    let shift = path[trace].1;
+                    let (_, shift) = trace;
                     match shift {
-                        // (-1, 0) => '<',
-                        // (1, 0) => '>',
-                        // (0, -1) => '^',
-                        // (0, 1) => 'v',
+                        (-1, 0) => '<',
+                        (1, 0) => '>',
+                        (0, -1) => '^',
+                        (0, 1) => 'v',
                         _ => 'o',
                     }
                 }
@@ -624,15 +626,20 @@ fn part_two(board: &Board, path: &Vec<Move>) -> usize {
     let start = board.get_start();
     let shift: Shift = (1, 0);
 
-    let solver = Cube {
-        board,
-        cube: &CUBE_TEST,
-    };
+    let solver = Cube { board, cube: &CUBE };
+    // let solver = Cube { board, cube: &CUBE_TEST };
 
     let (result, log) = solve(&solver, start, shift, path);
 
     // debug
-    print_path(board, &log, 17, 13);
+    // print_path(board, &log, 17, 13);
+    // print_path(board, &log, 151, 201);
+
+    // for p in log.iter() {
+    //     let (pos, shift) = p;
+    //     let (x, y) = pos;
+    //     println!("{} {} ({:?})", x, y, shift);
+    // }
 
     result
 }
@@ -657,20 +664,19 @@ fn solve<S: Solver>(
                     let (next_position, tile) = solver.step(position, shift);
                     match tile {
                         Tile::Open => {
-                            // do a regular move
+                            // Do a regular move
                             position = next_position;
 
                             // trace path
                             log.push((position, shift));
                         }
                         Tile::Solid => {
-                            break; // it stuck in Solid
-                                   // stop moving step by step
+                            // It looking at obstacle
+                            // Stop moving
+                            break;
                         }
                         Tile::Void => {
                             // it going step in Void: teleporting
-                            println!("touching void at {:?}", next_position);
-
                             if let Some(t) = solver.teleport(position, shift) {
                                 let (next_position, next_shift) = t;
 
@@ -679,6 +685,9 @@ fn solve<S: Solver>(
 
                                 // trace path
                                 log.push((position, shift));
+                            } else {
+                                // Teleporting to obstacle. Ignore
+                                break;
                             }
                         }
                     }
@@ -691,9 +700,13 @@ fn solve<S: Solver>(
             // (PS: positive direction of Y is down)
             Move::Left => {
                 shift = (shift.1, -shift.0);
+                // trace path
+                log.push((position, shift));
             }
             Move::Right => {
                 shift = (-shift.1, shift.0);
+                // trace path
+                log.push((position, shift));
             }
         }
     }
@@ -719,4 +732,41 @@ fn main() {
 
     let result = part_two(&board, &path);
     println!("Part two: {}", result);
+}
+
+#[cfg(test)]
+mod test {
+    use crate::Edge;
+
+    #[test]
+    fn edge_get_relative() {
+        let e = Edge {
+            size: 50,
+            a: (100, 100),
+            n: (0, -1), // up
+            clockwise: false,
+        };
+        // same point as edge A
+        assert_eq!(e.get_relative((100, 100)), 0);
+
+        // end of edge
+        assert_eq!(e.get_relative((100, 51)), 49);
+
+        // just at point on the edge
+        assert_eq!(e.get_relative((100, 95)), 5);
+    }
+
+    #[test]
+    fn edge_to_relative() {
+        let e = Edge {
+            size: 50,
+            a: (100, 100),
+            n: (0, -1), // up
+            clockwise: false,
+        };
+
+        assert_eq!(e.from_relative(0), (100, 100));
+        assert_eq!(e.from_relative(20), (100, 80));
+        assert_eq!(e.from_relative(49), (100, 51));
+    }
 }
