@@ -46,13 +46,7 @@ enum Adjacent {
     Line((Vector, Vector, Vector)),
 }
 
-#[derive(Debug, Clone, Copy)]
-struct Elf {
-    position: Vector,
-    propose: Option<Vector>,
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Squad {
     elves: HashSet<Vector>,
     order: [(Vector, (Vector, Vector, Vector)); 4],
@@ -139,7 +133,9 @@ fn print_squad(squad: &Squad) {
     }
 }
 
-fn run_round(squad: &mut Squad) {
+fn run_round(squad: &mut Squad) -> usize {
+    let mut moves = 0;
+
     // Start of first part
     let mut proposes: HashMap<Vector, Vector> = HashMap::new();
     for elf in &squad.elves {
@@ -179,6 +175,7 @@ fn run_round(squad: &mut Squad) {
             if let Some(count) = propose_counts.get(&propose) {
                 if *count == 1 {
                     new_elves.insert(*propose);
+                    moves += 1;
                 } else {
                     new_elves.insert(*elf);
                 }
@@ -190,6 +187,8 @@ fn run_round(squad: &mut Squad) {
 
     squad.elves = new_elves;
     squad.rotate_order();
+
+    moves
 }
 
 fn part_one(mut squad: Squad, debug: bool) -> usize {
@@ -222,6 +221,18 @@ fn part_one(mut squad: Squad, debug: bool) -> usize {
     result
 }
 
+fn part_two(mut squad: Squad) -> usize {
+    let mut rounds = 0;
+    loop {
+        let moves = run_round(&mut squad);
+        rounds += 1;
+        if moves == 0 {
+            break;
+        }
+    }
+    rounds
+}
+
 fn read_input() -> Squad {
     let mut squad = Squad::new();
     for (y, line) in io::stdin().lines().enumerate() {
@@ -244,6 +255,9 @@ fn read_input() -> Squad {
 
 fn main() {
     let squad = read_input();
-    let result = part_one(squad, false);
+    let result = part_one(squad.clone(), false);
     println!("Part one: {}", result);
+
+    let result = part_two(squad.clone());
+    println!("Part two: {}", result);
 }
