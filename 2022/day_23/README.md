@@ -240,6 +240,6 @@ How many empty ground tiles does that rectangle contain?
 cat input.txt | cargo run --release
 ```
 
-Result: ``
+Result: `4056`
 
 

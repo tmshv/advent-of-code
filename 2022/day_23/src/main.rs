@@ -139,67 +139,74 @@ fn print_squad(squad: &Squad) {
     }
 }
 
-fn part_one(mut squad: Squad) -> usize {
-    println!("== Initial State ==");
-    print_squad(&squad);
-    println!("");
+fn run_round(squad: &mut Squad) {
+    // Start of first part
+    let mut proposes: HashMap<Vector, Vector> = HashMap::new();
+    for elf in &squad.elves {
+        let count = squad.count_adjacents(Adjacent::All(elf.adjacents()));
 
-    let rounds = 10;
-    for round in 1..=rounds {
-        // Start of first part
-        let mut proposes: HashMap<Vector, Vector> = HashMap::new();
-        for elf in &squad.elves {
-            let count = squad.count_adjacents(Adjacent::All(elf.adjacents()));
+        // Do nothing with the elf if he is alone
+        if count == 0 {
+            continue;
+        }
 
-            // Do nothing with the elf if he is alone
+        // Find proposed move for the elf
+        for (step, line) in squad.order {
+            let line = (elf.add(&line.0), elf.add(&line.1), elf.add(&line.2));
+            let count = squad.count_adjacents(Adjacent::Line(line));
             if count == 0 {
-                continue;
-            }
-
-            // Find proposed move for the elf
-            for (step, line) in squad.order {
-                let line = (elf.add(&line.0), elf.add(&line.1), elf.add(&line.2));
-                let count = squad.count_adjacents(Adjacent::Line(line));
-                if count == 0 {
-                    let propose = elf.add(&step);
-                    proposes.insert(*elf, propose);
-                    break;
-                }
+                let propose = elf.add(&step);
+                proposes.insert(*elf, propose);
+                break;
             }
         }
+    }
 
-        // Count how many elves are going to occupy propose
-        let mut propose_counts: HashMap<Vector, usize> = HashMap::new();
-        for (_, propose) in &proposes {
+    // Count how many elves are going to occupy propose
+    let mut propose_counts: HashMap<Vector, usize> = HashMap::new();
+    for (_, propose) in &proposes {
+        if let Some(count) = propose_counts.get(&propose) {
+            propose_counts.insert(*propose, count + 1);
+        } else {
+            propose_counts.insert(*propose, 1);
+        }
+    }
+
+    // Second part
+    let mut new_elves: HashSet<Vector> = HashSet::new();
+    for elf in &mut squad.elves.iter() {
+        if let Some(propose) = proposes.get(&elf) {
             if let Some(count) = propose_counts.get(&propose) {
-                propose_counts.insert(*propose, count + 1);
-            } else {
-                propose_counts.insert(*propose, 1);
-            }
-        }
-
-        // Second part
-        let mut new_elves: HashSet<Vector> = HashSet::new();
-        for elf in &mut squad.elves.iter() {
-            if let Some(propose) = proposes.get(&elf) {
-                if let Some(count) = propose_counts.get(&propose) {
-                    if *count == 1 {
-                        new_elves.insert(*propose);
-                    } else {
-                        new_elves.insert(*elf);
-                    }
+                if *count == 1 {
+                    new_elves.insert(*propose);
+                } else {
+                    new_elves.insert(*elf);
                 }
-            } else {
-                new_elves.insert(*elf);
             }
+        } else {
+            new_elves.insert(*elf);
         }
+    }
 
-        squad.elves = new_elves;
-        squad.rotate_order();
+    squad.elves = new_elves;
+    squad.rotate_order();
+}
 
-        println!("== End of Round {} ==", round);
+fn part_one(mut squad: Squad, debug: bool) -> usize {
+    if debug {
+        println!("== Initial State ==");
         print_squad(&squad);
         println!("");
+    }
+
+    for round in 1..=10 {
+        run_round(&mut squad);
+
+        if debug {
+            println!("== End of Round {} ==", round);
+            print_squad(&squad);
+            println!("");
+        }
     }
 
     let (n, s, w, e) = squad.bounds();
@@ -237,6 +244,6 @@ fn read_input() -> Squad {
 
 fn main() {
     let squad = read_input();
-    let result = part_one(squad);
+    let result = part_one(squad, false);
     println!("Part one: {}", result);
 }
