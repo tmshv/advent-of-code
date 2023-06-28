@@ -1,4 +1,7 @@
-use std::{collections::HashMap, io};
+use std::{
+    collections::{HashMap, HashSet},
+    io,
+};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 struct Vector(isize, isize);
@@ -47,10 +50,22 @@ enum Adjacent {
 struct Elf {
     position: Vector,
     propose: Option<Vector>,
+}
+
+#[derive(Debug)]
+struct Squad {
+    elves: HashSet<Vector>,
     order: [(Vector, (Vector, Vector, Vector)); 4],
 }
 
-impl Elf {
+impl Squad {
+    fn new() -> Squad {
+        Squad {
+            elves: HashSet::new(),
+            order: START_ORDER.clone(),
+        }
+    }
+
     fn rotate_order(&mut self) {
         let first = self.order[0];
         for i in 1..self.order.len() {
@@ -59,21 +74,13 @@ impl Elf {
         let last = self.order.len() - 1;
         self.order[last] = first;
     }
-}
-
-#[derive(Debug)]
-struct Squad {
-    elves: HashMap<Vector, Elf>,
-}
-
-impl Squad {
-    fn new() -> Squad {
-        Squad {
-            elves: HashMap::new(),
-        }
-    }
 
     fn count_adjacents(&self, a: Adjacent) -> usize {
+        // let mut elves: HashMap<Vector, &Elf> = HashMap::new();
+        // for elf in &self.elves {
+        //     elves.insert(elf.position, elf);
+        // }
+
         match a {
             Adjacent::All(positions) => {
                 let mut count = 0;
@@ -97,14 +104,8 @@ impl Squad {
         }
     }
 
-    fn add_elf(&mut self, position: Vector) -> &Elf {
-        let elf = Elf {
-            position,
-            propose: None,
-            order: START_ORDER.clone(),
-        };
-        self.elves.insert(position, elf);
-        self.elves.get(&position).unwrap()
+    fn add_elf(&mut self, position: Vector) {
+        self.elves.insert(position);
     }
 
     fn occupied(&self, position: Vector) -> bool {
@@ -115,10 +116,10 @@ impl Squad {
     }
 
     fn bounds(&self) -> (isize, isize, isize, isize) {
-        let n = self.elves.values().map(|elf| elf.position.1).min().unwrap();
-        let s = self.elves.values().map(|elf| elf.position.1).max().unwrap();
-        let w = self.elves.values().map(|elf| elf.position.0).min().unwrap();
-        let e = self.elves.values().map(|elf| elf.position.0).max().unwrap();
+        let n = self.elves.iter().map(|elf| elf.1).min().unwrap();
+        let s = self.elves.iter().map(|elf| elf.1).max().unwrap();
+        let w = self.elves.iter().map(|elf| elf.0).min().unwrap();
+        let e = self.elves.iter().map(|elf| elf.0).max().unwrap();
         (n, s, w, e)
     }
 }
@@ -147,8 +148,8 @@ fn part_one(mut squad: Squad) -> usize {
     for round in 1..=rounds {
         // Start of first part
         let mut proposes: HashMap<Vector, Vector> = HashMap::new();
-        for (_, elf) in &squad.elves {
-            let count = squad.count_adjacents(Adjacent::All(elf.position.adjacents()));
+        for elf in &squad.elves {
+            let count = squad.count_adjacents(Adjacent::All(elf.adjacents()));
 
             // Do nothing with the elf if he is alone
             if count == 0 {
@@ -156,16 +157,12 @@ fn part_one(mut squad: Squad) -> usize {
             }
 
             // Find proposed move for the elf
-            for (step, line) in elf.order {
-                let line = (
-                    elf.position.add(&line.0),
-                    elf.position.add(&line.1),
-                    elf.position.add(&line.2),
-                );
+            for (step, line) in squad.order {
+                let line = (elf.add(&line.0), elf.add(&line.1), elf.add(&line.2));
                 let count = squad.count_adjacents(Adjacent::Line(line));
                 if count == 0 {
-                    let propose = elf.position.add(&step);
-                    proposes.insert(elf.position, propose);
+                    let propose = elf.add(&step);
+                    proposes.insert(*elf, propose);
                     break;
                 }
             }
@@ -181,29 +178,24 @@ fn part_one(mut squad: Squad) -> usize {
             }
         }
 
-        // End of first part
-        for (_, elf) in &mut squad.elves {
-            if let Some(propose) = proposes.get(&elf.position) {
+        // Second part
+        let mut new_elves: HashSet<Vector> = HashSet::new();
+        for elf in &mut squad.elves.iter() {
+            if let Some(propose) = proposes.get(&elf) {
                 if let Some(count) = propose_counts.get(&propose) {
                     if *count == 1 {
-                        elf.propose = Some(*propose);
+                        new_elves.insert(*propose);
                     } else {
-                        elf.propose = None;
+                        new_elves.insert(*elf);
                     }
                 }
             } else {
-                elf.propose = None;
+                new_elves.insert(*elf);
             }
         }
 
-        // Second part
-        for (_, elf) in &mut squad.elves {
-            if let Some(propose) = elf.propose {
-                elf.position = propose;
-                elf.propose = None;
-            }
-            elf.rotate_order();
-        }
+        squad.elves = new_elves;
+        squad.rotate_order();
 
         println!("== End of Round {} ==", round);
         print_squad(&squad);
