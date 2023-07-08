@@ -13,6 +13,8 @@ const U: Vector = Vector(0, -1);
 const D: Vector = Vector(0, 1);
 const L: Vector = Vector(-1, 0);
 const R: Vector = Vector(1, 0);
+const W: Vector = Vector(0, 0);
+const STEPS: [&Vector; 5] = [&D, &R, &U, &L, &W];
 
 #[derive(Debug)]
 enum Tile {
@@ -27,10 +29,88 @@ impl Vector {
         Vector(self.0 + other.0, self.1 + other.1)
     }
 
+    fn sub(&self, other: &Vector) -> Vector {
+        Vector(self.0 - other.0, self.1 - other.1)
+    }
+
     fn as_index(&self) -> (usize, usize) {
         let x = if self.0 > 0 { self.0 as usize } else { 0 };
         let y = if self.1 > 0 { self.1 as usize } else { 0 };
         (x, y)
+    }
+
+    fn is_zero(&self) -> bool {
+        self.0 == 0 && self.1 == 0
+    }
+}
+
+#[derive(Debug, Clone)]
+struct State {
+    ts: usize,
+    trace: Vec<Vector>,
+}
+
+impl State {
+    fn apply(&self, pos: Vector) -> State {
+        let mut trace = self.trace.clone();
+        trace.push(pos);
+        State {
+            ts: self.next(),
+            trace,
+        }
+    }
+
+    fn position(&self) -> &Vector {
+        self.trace.last().unwrap()
+    }
+
+    fn next(&self) -> usize {
+        self.ts + 1
+    }
+
+    fn get_trace_value(&self) -> String {
+        let s = self.trace.len();
+        let head = self.trace.iter().take(s - 1);
+        let tail = self.trace.iter().skip(1);
+        head.zip(tail)
+            .map(|(a, b)| match b.sub(a) {
+                Vector(1, 0) => 'R',
+                Vector(-1, 0) => 'L',
+                Vector(0, 1) => 'D',
+                Vector(0, -1) => 'U',
+                Vector(0, 0) => 'W',
+                _ => '?',
+            })
+            .into_iter()
+            .collect()
+    }
+
+    fn evaluate(&self) -> bool {
+        let s = self.trace.len();
+        if s < 20 {
+            return true;
+        }
+
+        let t = self.get_trace_value();
+        let p = t.as_str();
+        if &p[s - 4..s - 1] == &p[s - 8..s - 5] {
+            return false;
+        }
+
+        // if &p[s - 6..s - 1] == &p[s - 12..s - 7] {
+        //     return false;
+        // }
+
+        // last two steps are in loop
+        let t1 = self.trace[s - 1];
+        let t2 = self.trace[s - 2];
+        let t3 = self.trace[s - 3];
+        let t4 = self.trace[s - 4];
+        if t1 == t3 && t2 == t4 {
+            return false;
+        }
+
+        true
     }
 }
 
@@ -48,6 +128,7 @@ struct Valley {
     start: Vector,
     finish: Vector,
     stat: Grid<HashSet<usize>>,
+    period: usize,
 }
 
 impl Valley {
@@ -114,6 +195,37 @@ impl Valley {
         let ymax = self.grid.len() - 2;
         (xmin, xmax, ymin, ymax)
     }
+
+    fn on_playground(&self, pos: &Vector) -> bool {
+        if pos.is_zero() {
+            return false;
+        }
+        let (x, y) = pos.as_index();
+        let (xmin, xmax, ymin, ymax) = self.get_playground_bounds();
+        return (x >= xmin && x <= xmax) && (y >= ymin && y <= ymax);
+    }
+
+    fn get_steps_at(&self, ts: usize, pos: &Vector) -> Vec<Vector> {
+        let ts_module = ts % self.period;
+        let mut result = Vec::new();
+        for step in STEPS {
+            let next = pos.add(step);
+            if next.is_zero() {
+                continue;
+            }
+            if next == self.finish {
+                result.push(next);
+                continue;
+            }
+            if self.on_playground(&next) {
+                let (x, y) = next.as_index();
+                if self.stat[y][x].contains(&ts_module) {
+                    result.push(next);
+                }
+            }
+        }
+        result
+    }
 }
 
 fn read_input() -> Valley {
@@ -169,6 +281,7 @@ fn read_input() -> Valley {
     }
     Valley {
         ts: 0,
+        period: 0,
         grid,
         blizzards,
         start,
@@ -217,96 +330,71 @@ fn print_valley(valley: &Valley) {
 }
 
 fn part_one(mut valley: Valley) -> usize {
+    valley.period = 700;
     // loop {
-    for _ in 0..12 {
-        print_valley(&valley);
+    for _ in 0..valley.period {
+        // print_valley(&valley);
         valley.write_stat();
         valley.tick();
-        thread::sleep(Duration::from_millis(100));
-        clear();
-        if false {
-            return 0;
-        }
+        // thread::sleep(Duration::from_millis(10));
+        // clear();
+        // if false {
+        //     return 0;
+        // }
     }
     print_valley(&valley);
 
-    for (y, row) in valley.stat.iter().enumerate() {
-        for (x, tile) in row.iter().enumerate() {
-            if tile.len() > 0 {
-                let mut xs: Vec<&usize> = tile.iter().collect();
-                xs.sort();
-                println!("row={} col={} >>> {:?}", y, x, xs);
+    // for (y, row) in valley.stat.iter().enumerate() {
+    //     for (x, tile) in row.iter().enumerate() {
+    //         if tile.len() > 0 {
+    //             let mut xs: Vec<&usize> = tile.iter().collect();
+    //             xs.sort();
+    //             println!("row={} col={} >>> {:?}", y, x, xs);
+    //         }
+    //     }
+    // }
+
+    let state = State {
+        ts: 0,
+        trace: vec![valley.start],
+    };
+
+    let mut min_trace = 30;
+    let mut max_size = 0;
+    let mut deq = VecDeque::<State>::with_capacity(1_000_000);
+    deq.push_front(state);
+
+    while deq.len() > 0 {
+        if deq.len() > max_size {
+            max_size = deq.len();
+        }
+        println!("size {} {}", deq.len(), max_size);
+
+        let state = deq.pop_front().unwrap();
+        let variants = valley.get_steps_at(state.next(), state.position());
+        for v in variants {
+            if v == valley.finish {
+                let new_state = state.apply(v);
+                println!(
+                    "Finish! {:?} (ts={})",
+                    new_state.get_trace_value(),
+                    new_state.ts
+                );
+                min_trace = new_state.ts;
+            }
+
+            let new_state = state.apply(v);
+
+            if !new_state.evaluate() {
+                continue;
+            }
+
+            if new_state.trace.len() <= min_trace {
+                deq.push_back(new_state);
             }
         }
     }
-
-    //     let mut seen = HashSet::<State>::with_capacity(10_000_000);
-    //     let mut deq = VecDeque::<State>::with_capacity(10_000_000);
-    //     deq.push_front(state);
-    //
-    //     // evaluate new states starting from current amount of geode earned
-    //     let mut max_geodes = state.geode;
-    //     let mut max_at_time = state.time;
-    //
-    //     while deq.len() > 0 {
-    //         let state = deq.pop_front().unwrap();
-    //
-    //         // state is already checked
-    //         if seen.contains(&state) {
-    //             continue;
-    //         } else {
-    //             seen.insert(state.clone());
-    //         }
-    //
-    //         // state is wasted
-    //         if !state.has_time() {
-    //             continue;
-    //         }
-    //
-    //         let geodes = state.geode + state.geode_robots;
-    //         if geodes > max_geodes {
-    //             max_geodes = geodes;
-    //             max_at_time = state.time;
-    //         }
-    //
-    //         // skip state if it waste more time than best and earned less geodes
-    //         if state.time > max_at_time && state.geode + state.geode_robots < max_geodes {
-    //             continue;
-    //         }
-    //
-    //         // check unique branch where we buy geode robot
-    //         if state.enough_resources(self.geode_robot_cost) {
-    //             let mut next_state = state.clone();
-    //             next_state.tick();
-    //             next_state.create_robot((0, 0, 0, 1), self.geode_robot_cost);
-    //             deq.push_back(next_state);
-    //
-    //             // no need to check brances where other robots can be build at this step
-    //             // nor earning resources
-    //             continue;
-    //         }
-    //
-    //         // check branch where we buy obsidian robot
-    //         if state.enough_resources(self.obsidian_robot_cost) {
-    //             let mut next_state = state.clone();
-    //             next_state.tick();
-    //             next_state.create_robot((0, 0, 1, 0), self.obsidian_robot_cost);
-    //             deq.push_back(next_state);
-    //         }
-    //
-    //         // check branch where we buy clay robot
-    //         if state.enough_resources(self.clay_robot_cost)
-    //             && !state.enough_robots(self.clay_robot_cost)
-    //         {
-    //             let mut next_state = state.clone();
-    //             next_state.tick();
-    //             next_state.create_robot((0, 1, 0, 0), self.clay_robot_cost);
-    //             deq.push_back(next_state);
-    //         }
-    //     }
-    //     max_geodes
-
-    0
+    min_trace
 }
 
 fn clear() {
