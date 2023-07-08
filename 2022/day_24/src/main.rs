@@ -7,6 +7,8 @@ use std::{
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 struct Vector(isize, isize);
 
+type Grid<T> = Vec<Vec<T>>;
+
 const U: Vector = Vector(0, -1);
 const D: Vector = Vector(0, 1);
 const L: Vector = Vector(-1, 0);
@@ -41,11 +43,11 @@ struct Blizzard {
 #[derive(Debug)]
 struct Valley {
     ts: usize,
-    // grid: [[Tile; 102]; 37],
-    grid: Vec<Vec<Tile>>,
+    grid: Grid<Tile>,
     blizzards: Vec<Blizzard>,
     start: Vector,
     finish: Vector,
+    stat: Grid<HashSet<usize>>,
 }
 
 impl Valley {
@@ -73,29 +75,171 @@ impl Valley {
         self.ts += 1;
     }
 
-    fn get_blizzard_map(&self) -> HashMap<Vector, Tile> {
-        // let mut map = HashMap::new();
-        // map
-        self.blizzards
-            .iter()
-            // .map(|x| (x.pos, x.dir))
-            .fold(HashMap::new(), |mut acc, b| {
-                match acc.get(&b.pos) {
-                    None => acc.insert(b.pos, Tile::Obstacle(b.clone())),
-                    Some(t) => {
-                        let new_tile = match t {
-                            Tile::Mess(n) => Tile::Mess(n + 1),
-                            _ => Tile::Mess(2),
-                        };
-                        acc.insert(b.pos, new_tile)
+    fn write_stat(&mut self) {
+        let blizzards = self.get_blizzard_map();
+        let (xmin, xmax, ymin, ymax) = self.get_playground_bounds();
+        for y in ymin..=ymax {
+            for x in xmin..=xmax {
+                let cell = Vector(x as isize, y as isize);
+                match blizzards.get(&cell) {
+                    None => {
+                        self.stat[y][x].insert(self.ts);
                     }
-                };
-                acc
-            })
-        // .collect()
+                    Some(_) => (),
+                }
+            }
+        }
     }
 
-    // fn evaluate(&self, state: State) -> u16 {
+    fn get_blizzard_map(&self) -> HashMap<Vector, Tile> {
+        self.blizzards.iter().fold(HashMap::new(), |mut acc, b| {
+            match acc.get(&b.pos) {
+                None => acc.insert(b.pos, Tile::Obstacle(b.clone())),
+                Some(t) => {
+                    let new_tile = match t {
+                        Tile::Mess(n) => Tile::Mess(n + 1),
+                        _ => Tile::Mess(2),
+                    };
+                    acc.insert(b.pos, new_tile)
+                }
+            };
+            acc
+        })
+    }
+
+    fn get_playground_bounds(&self) -> (usize, usize, usize, usize) {
+        let xmin = 1;
+        let xmax = self.grid[0].len() - 2;
+        let ymin = 1;
+        let ymax = self.grid.len() - 2;
+        (xmin, xmax, ymin, ymax)
+    }
+}
+
+fn read_input() -> Valley {
+    let mut start = Vector(0, 0);
+    let mut finish = Vector(0, 0);
+    let mut blizzards = Vec::new();
+    let mut grid = Vec::new();
+    let mut stat = Vec::new();
+
+    let lines: Vec<String> = io::stdin().lines().map(|line| line.unwrap()).collect();
+    for (y, line) in lines.iter().enumerate() {
+        let first_row = y == 0;
+        let last_row = y == lines.len() - 1;
+        let chars: Vec<char> = line.chars().collect();
+        grid.push(Vec::new());
+        stat.push(Vec::new());
+        for (x, cell) in chars.iter().enumerate() {
+            let pos = Vector(x as isize, y as isize);
+            let is_wall = match cell {
+                '#' => true,
+                _ => {
+                    let first_col = x == 0;
+                    let last_col = x == chars.len() - 1;
+                    first_row | last_row | first_col | last_col
+                }
+            };
+            match cell {
+                '.' => {
+                    if is_wall {
+                        if first_row {
+                            start = pos.clone();
+                        } else if last_row {
+                            finish = pos.clone();
+                        }
+                    }
+                }
+                _ => (),
+            };
+            match cell {
+                '>' => blizzards.push(Blizzard { pos, dir: R }),
+                '<' => blizzards.push(Blizzard { pos, dir: L }),
+                'v' => blizzards.push(Blizzard { pos, dir: D }),
+                '^' => blizzards.push(Blizzard { pos, dir: U }),
+                _ => (),
+            };
+            let tile = match cell {
+                '#' => Tile::Wall,
+                _ => Tile::Void,
+            };
+            grid[y].push(tile);
+            stat[y].push(HashSet::new());
+        }
+    }
+    Valley {
+        ts: 0,
+        grid,
+        blizzards,
+        start,
+        finish,
+        stat,
+    }
+}
+
+fn print_valley(valley: &Valley) {
+    let blizzards = valley.get_blizzard_map();
+    for (y, row) in valley.grid.iter().enumerate() {
+        for (x, tile) in row.iter().enumerate() {
+            let mut c = match tile {
+                Tile::Void => '.',
+                Tile::Wall => '#',
+                _ => ' ',
+            };
+            let cell = Vector(x as isize, y as isize);
+            if let Some(t) = blizzards.get(&cell) {
+                c = match t {
+                    Tile::Obstacle(b) => match b.dir {
+                        Vector(1, 0) => '>',
+                        Vector(-1, 0) => '<',
+                        Vector(0, 1) => 'v',
+                        Vector(0, -1) => '^',
+                        _ => 'x',
+                    },
+                    Tile::Mess(m) => match m {
+                        2 => '2',
+                        3 => '3',
+                        4 => '4',
+                        5 => '5',
+                        6 => '6',
+                        7 => '7',
+                        8 => '8',
+                        9 => '9',
+                        _ => '%',
+                    },
+                    _ => ' ',
+                }
+            }
+            print!("{}", c);
+        }
+        println!("");
+    }
+}
+
+fn part_one(mut valley: Valley) -> usize {
+    // loop {
+    for _ in 0..12 {
+        print_valley(&valley);
+        valley.write_stat();
+        valley.tick();
+        thread::sleep(Duration::from_millis(100));
+        clear();
+        if false {
+            return 0;
+        }
+    }
+    print_valley(&valley);
+
+    for (y, row) in valley.stat.iter().enumerate() {
+        for (x, tile) in row.iter().enumerate() {
+            if tile.len() > 0 {
+                let mut xs: Vec<&usize> = tile.iter().collect();
+                xs.sort();
+                println!("row={} col={} >>> {:?}", y, x, xs);
+            }
+        }
+    }
+
     //     let mut seen = HashSet::<State>::with_capacity(10_000_000);
     //     let mut deq = VecDeque::<State>::with_capacity(10_000_000);
     //     deq.push_front(state);
@@ -161,115 +305,8 @@ impl Valley {
     //         }
     //     }
     //     max_geodes
-    // }
-}
 
-fn read_input() -> Valley {
-    let mut start = Vector(0, 0);
-    let mut finish = Vector(0, 0);
-    let mut blizzards = Vec::new();
-    let mut grid = Vec::new();
-
-    let lines: Vec<String> = io::stdin().lines().map(|line| line.unwrap()).collect();
-    for (y, line) in lines.iter().enumerate() {
-        let first_row = y == 0;
-        let last_row = y == lines.len() - 1;
-        let chars: Vec<char> = line.chars().collect();
-        grid.push(Vec::new());
-        for (x, cell) in chars.iter().enumerate() {
-            let pos = Vector(x as isize, y as isize);
-            let is_wall = match cell {
-                '#' => true,
-                _ => {
-                    let first_col = x == 0;
-                    let last_col = x == chars.len() - 1;
-                    first_row | last_row | first_col | last_col
-                }
-            };
-            match cell {
-                '.' => {
-                    if is_wall {
-                        if first_row {
-                            start = pos.clone();
-                        } else if last_row {
-                            finish = pos.clone();
-                        }
-                    }
-                }
-                _ => (),
-            };
-            match cell {
-                '>' => blizzards.push(Blizzard { pos, dir: R }),
-                '<' => blizzards.push(Blizzard { pos, dir: L }),
-                'v' => blizzards.push(Blizzard { pos, dir: D }),
-                '^' => blizzards.push(Blizzard { pos, dir: U }),
-                _ => (),
-            };
-            let tile = match cell {
-                '#' => Tile::Wall,
-                _ => Tile::Void,
-            };
-            grid[y].push(tile);
-        }
-    }
-    Valley {
-        ts: 0,
-        grid,
-        blizzards,
-        start,
-        finish,
-    }
-}
-
-fn print_valley(valley: &Valley) {
-    let blizzards = valley.get_blizzard_map();
-    for (y, row) in valley.grid.iter().enumerate() {
-        for (x, tile) in row.iter().enumerate() {
-            let mut c = match tile {
-                Tile::Void => '.',
-                Tile::Wall => '#',
-                _ => ' ',
-            };
-            let cell = Vector(x as isize, y as isize);
-            if let Some(t) = blizzards.get(&cell) {
-                c = match t {
-                    Tile::Obstacle(b) => match b.dir {
-                        Vector(1, 0) => '>',
-                        Vector(-1, 0) => '<',
-                        Vector(0, 1) => 'v',
-                        Vector(0, -1) => '^',
-                        _ => 'x',
-                    },
-                    Tile::Mess(m) => match m {
-                        2 => '2',
-                        3 => '3',
-                        4 => '4',
-                        5 => '5',
-                        6 => '6',
-                        7 => '7',
-                        8 => '8',
-                        9 => '9',
-                        _ => '%',
-                    },
-                    _ => ' ',
-                }
-            }
-            print!("{}", c);
-        }
-        println!("");
-    }
-}
-
-fn part_one(mut valley: Valley) -> usize {
-    loop {
-        print_valley(&valley);
-        valley.tick();
-        thread::sleep(Duration::from_millis(100));
-        clear();
-        if false {
-            return 0;
-        }
-    }
+    0
 }
 
 fn clear() {
