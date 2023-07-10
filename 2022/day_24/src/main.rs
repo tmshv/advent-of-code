@@ -16,6 +16,24 @@ const R: Vector = Vector(1, 0);
 const W: Vector = Vector(0, 0);
 const STEPS: [&Vector; 5] = [&D, &R, &U, &L, &W];
 
+fn gcd(a: usize, b: usize) -> usize {
+    let mut min = std::cmp::min(a, b);
+    let mut max = std::cmp::max(a, b);
+    loop {
+        let remainder = max % min;
+        if remainder == 0 {
+            return min;
+        }
+        max = min;
+        min = remainder;
+    }
+}
+
+fn lcm(first: usize, second: usize) -> usize {
+    let x = gcd(first, second);
+    first * second / x
+}
+
 #[derive(Debug)]
 enum Tile {
     Void,
@@ -408,4 +426,20 @@ fn main() {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use crate::{gcd, lcm};
+
+    #[test]
+    fn test_gcd() {
+        assert_eq!(gcd(25, 15), 5);
+        assert_eq!(gcd(6, 4), 2);
+        assert_eq!(gcd(100, 35), 5);
+    }
+
+    #[test]
+    fn test_lcm() {
+        assert_eq!(lcm(25, 15), 75);
+        assert_eq!(lcm(6, 4), 12);
+        assert_eq!(lcm(100, 35), 700);
+    }
+}
