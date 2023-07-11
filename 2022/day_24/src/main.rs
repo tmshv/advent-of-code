@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{BinaryHeap, HashMap, HashSet},
     io, thread,
     time::Duration,
 };
@@ -14,7 +14,9 @@ const D: Vector = Vector(0, 1);
 const L: Vector = Vector(-1, 0);
 const R: Vector = Vector(1, 0);
 const W: Vector = Vector(0, 0);
-const STEPS: [&Vector; 5] = [&D, &R, &U, &L, &W];
+// const STEPS: [&Vector; 5] = [&R, &D, &U, &L, &W];
+// const STEPS: [&Vector; 5] = [&U, &R, &D, &L, &W];
+const STEPS: [&Vector; 5] = [&R, &L, &U, &D, &W];
 
 fn gcd(a: usize, b: usize) -> usize {
     let mut min = std::cmp::min(a, b);
@@ -60,25 +62,62 @@ impl Vector {
     fn is_zero(&self) -> bool {
         self.0 == 0 && self.1 == 0
     }
+
+    fn in_bounds(&self, bounds: &(isize, isize, isize, isize)) -> bool {
+        let (xmin, xmax, ymin, ymax) = bounds;
+        let x = &self.0;
+        let y = &self.1;
+        (x >= xmin && x <= xmax) && (y >= ymin && y <= ymax)
+    }
+
+    fn get_move(&self, other: &Vector) -> char {
+        match other.sub(self) {
+            Vector(1, 0) => 'R',
+            Vector(-1, 0) => 'L',
+            Vector(0, 1) => 'D',
+            Vector(0, -1) => 'U',
+            Vector(0, 0) => 'W',
+            _ => '?',
+        }
+    }
 }
 
-#[derive(Debug, Clone)]
-struct State {
+#[derive(Debug, Hash, Clone, PartialEq, Eq)]
+struct Squad {
     ts: usize,
+    // pos: Vector,
     trace: Vec<Vector>,
 }
 
-impl State {
-    fn apply(&self, pos: Vector) -> State {
+impl Ord for Squad {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.ts.cmp(&other.ts)
+    }
+}
+
+impl PartialOrd for Squad {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Squad {
+    fn apply(&self, pos: Vector) -> Squad {
         let mut trace = self.trace.clone();
         trace.push(pos);
-        State {
+        Squad {
             ts: self.next(),
+            // pos,
             trace,
         }
     }
 
+    // fn fingerprint(&self) -> (usize, Vector) {
+    //     (self.ts, *self.position())
+    // }
+
     fn position(&self) -> &Vector {
+        // &self.pos
         self.trace.last().unwrap()
     }
 
@@ -91,44 +130,9 @@ impl State {
         let head = self.trace.iter().take(s - 1);
         let tail = self.trace.iter().skip(1);
         head.zip(tail)
-            .map(|(a, b)| match b.sub(a) {
-                Vector(1, 0) => 'R',
-                Vector(-1, 0) => 'L',
-                Vector(0, 1) => 'D',
-                Vector(0, -1) => 'U',
-                Vector(0, 0) => 'W',
-                _ => '?',
-            })
+            .map(|(a, b)| a.get_move(b))
             .into_iter()
             .collect()
-    }
-
-    fn evaluate(&self) -> bool {
-        let s = self.trace.len();
-        if s < 20 {
-            return true;
-        }
-
-        let t = self.get_trace_value();
-        let p = t.as_str();
-        if &p[s - 4..s - 1] == &p[s - 8..s - 5] {
-            return false;
-        }
-
-        // if &p[s - 6..s - 1] == &p[s - 12..s - 7] {
-        //     return false;
-        // }
-
-        // last two steps are in loop
-        let t1 = self.trace[s - 1];
-        let t2 = self.trace[s - 2];
-        let t3 = self.trace[s - 3];
-        let t4 = self.trace[s - 4];
-        if t1 == t3 && t2 == t4 {
-            return false;
-        }
-
-        true
     }
 }
 
@@ -138,6 +142,27 @@ struct Blizzard {
     dir: Vector,
 }
 
+impl Blizzard {
+    fn next(&self) -> Vector {
+        self.pos.add(&self.dir)
+    }
+
+    fn step(&mut self) {
+        self.pos = self.next();
+    }
+
+    fn teleport(&mut self, bounds: &(isize, isize, isize, isize)) {
+        let (xmin, xmax, ymin, ymax) = bounds;
+        self.pos = match self.dir {
+            Vector(1, 0) => Vector(*xmin, self.pos.1),
+            Vector(-1, 0) => Vector(*xmax, self.pos.1),
+            Vector(0, 1) => Vector(self.pos.0, *ymin),
+            Vector(0, -1) => Vector(self.pos.0, *ymax),
+            Vector(_, _) => panic!("Unreachable"),
+        }
+    }
+}
+
 #[derive(Debug)]
 struct Valley {
     ts: usize,
@@ -145,49 +170,35 @@ struct Valley {
     blizzards: Vec<Blizzard>,
     start: Vector,
     finish: Vector,
-    stat: Grid<HashSet<usize>>,
-    period: usize,
+    stat: HashMap<usize, HashSet<Vector>>,
 }
 
 impl Valley {
+    fn period(&self) -> usize {
+        let (_, xmax, _, ymax) = self.get_playground_bounds();
+        lcm(xmax, ymax)
+    }
+
     fn tick(&mut self) {
-        let wall_right = self.grid[0].len() as isize - 2;
-        let wall_bottom = self.grid.len() as isize - 2;
-        self.blizzards.iter_mut().for_each(|b| {
-            let (x, y) = b.pos.add(&b.dir).as_index();
-            let next = match self.grid[y][x] {
-                Tile::Wall => {
-                    match b.dir {
-                        Vector(1, 0) => Vector(1, b.pos.1),
-                        Vector(-1, 0) => Vector(wall_right, b.pos.1), // TODO 1 -> last
-                        Vector(0, 1) => Vector(b.pos.0, 1),
-                        Vector(0, -1) => Vector(b.pos.0, wall_bottom), // TODO 1 -> last
-                        Vector(_, _) => panic!("UB"),
-                    }
-                }
-                _ => b.pos.add(&b.dir),
+        let (xmin, xmax, ymin, ymax) = self.get_playground_bounds();
+        let playground = (xmin as isize, xmax as isize, ymin as isize, ymax as isize);
+
+        self.blizzards.iter_mut().for_each(|blizzard| {
+            if blizzard.next().in_bounds(&playground) {
+                blizzard.step();
+            } else {
+                blizzard.teleport(&playground);
             };
-            b.pos = next;
         });
 
         // Increase frame
         self.ts += 1;
     }
 
-    fn write_stat(&mut self) {
-        let blizzards = self.get_blizzard_map();
-        let (xmin, xmax, ymin, ymax) = self.get_playground_bounds();
-        for y in ymin..=ymax {
-            for x in xmin..=xmax {
-                let cell = Vector(x as isize, y as isize);
-                match blizzards.get(&cell) {
-                    None => {
-                        self.stat[y][x].insert(self.ts);
-                    }
-                    Some(_) => (),
-                }
-            }
-        }
+    fn save_blizzard_positions(&mut self) {
+        let blizzards: HashSet<Vector> =
+            self.blizzards.iter().map(|blizzard| blizzard.pos).collect();
+        self.stat.insert(self.ts, blizzards);
     }
 
     fn get_blizzard_map(&self) -> HashMap<Vector, Tile> {
@@ -214,35 +225,29 @@ impl Valley {
         (xmin, xmax, ymin, ymax)
     }
 
-    fn on_playground(&self, pos: &Vector) -> bool {
-        if pos.is_zero() {
-            return false;
+    fn is_wall(&self, pos: &Vector) -> bool {
+        if pos.0 < 0 || pos.1 < 0 {
+            return true;
+        }
+        if pos.0 >= self.grid[0].len() as isize || pos.1 >= self.grid.len() as isize {
+            return true;
         }
         let (x, y) = pos.as_index();
-        let (xmin, xmax, ymin, ymax) = self.get_playground_bounds();
-        return (x >= xmin && x <= xmax) && (y >= ymin && y <= ymax);
+        match self.grid[y][x] {
+            Tile::Wall => true,
+            _ => false,
+        }
     }
 
-    fn get_steps_at(&self, ts: usize, pos: &Vector) -> Vec<Vector> {
-        let ts_module = ts % self.period;
-        let mut result = Vec::new();
-        for step in STEPS {
-            let next = pos.add(step);
-            if next.is_zero() {
-                continue;
-            }
-            if next == self.finish {
-                result.push(next);
-                continue;
-            }
-            if self.on_playground(&next) {
-                let (x, y) = next.as_index();
-                if self.stat[y][x].contains(&ts_module) {
-                    result.push(next);
-                }
+    fn is_blizzard(&self, pos: &Vector, ts: usize) -> bool {
+        let ts_index = ts % self.period();
+        match self.stat.get(&ts_index) {
+            Some(blizzards) => blizzards.contains(pos),
+            None => {
+                println!("is_blizzard {:?} {}", pos, ts);
+                panic!("Unreachable");
             }
         }
-        result
     }
 }
 
@@ -251,7 +256,6 @@ fn read_input() -> Valley {
     let mut finish = Vector(0, 0);
     let mut blizzards = Vec::new();
     let mut grid = Vec::new();
-    let mut stat = Vec::new();
 
     let lines: Vec<String> = io::stdin().lines().map(|line| line.unwrap()).collect();
     for (y, line) in lines.iter().enumerate() {
@@ -259,7 +263,6 @@ fn read_input() -> Valley {
         let last_row = y == lines.len() - 1;
         let chars: Vec<char> = line.chars().collect();
         grid.push(Vec::new());
-        stat.push(Vec::new());
         for (x, cell) in chars.iter().enumerate() {
             let pos = Vector(x as isize, y as isize);
             let is_wall = match cell {
@@ -294,21 +297,19 @@ fn read_input() -> Valley {
                 _ => Tile::Void,
             };
             grid[y].push(tile);
-            stat[y].push(HashSet::new());
         }
     }
     Valley {
         ts: 0,
-        period: 0,
         grid,
         blizzards,
         start,
         finish,
-        stat,
+        stat: HashMap::new(),
     }
 }
 
-fn print_valley(valley: &Valley) {
+fn print_valley(valley: &Valley, e: Option<Vector>) {
     let blizzards = valley.get_blizzard_map();
     for (y, row) in valley.grid.iter().enumerate() {
         for (x, tile) in row.iter().enumerate() {
@@ -341,78 +342,124 @@ fn print_valley(valley: &Valley) {
                     _ => ' ',
                 }
             }
+            if let Some(e) = e {
+                if e == cell {
+                    c = 'E';
+                }
+            }
             print!("{}", c);
         }
         println!("");
     }
 }
 
-fn part_one(mut valley: Valley) -> usize {
-    valley.period = 700;
-    // loop {
-    for _ in 0..valley.period {
-        // print_valley(&valley);
-        valley.write_stat();
+fn solve(valley: &mut Valley) -> Option<Squad> {
+    valley.save_blizzard_positions();
+    for _ in 0..valley.period() {
         valley.tick();
-        // thread::sleep(Duration::from_millis(10));
-        // clear();
-        // if false {
-        //     return 0;
-        // }
+        valley.save_blizzard_positions();
     }
-    print_valley(&valley);
 
-    // for (y, row) in valley.stat.iter().enumerate() {
-    //     for (x, tile) in row.iter().enumerate() {
-    //         if tile.len() > 0 {
-    //             let mut xs: Vec<&usize> = tile.iter().collect();
-    //             xs.sort();
-    //             println!("row={} col={} >>> {:?}", y, x, xs);
-    //         }
-    //     }
-    // }
-
-    let state = State {
+    let squad = Squad {
         ts: 0,
         trace: vec![valley.start],
+        // pos: valley.start,
     };
 
-    let mut min_trace = 30;
-    let mut max_size = 0;
-    let mut deq = VecDeque::<State>::with_capacity(1_000_000);
-    deq.push_front(state);
+    let mut seen = HashSet::new();
+    let mut queue = BinaryHeap::new();
 
-    while deq.len() > 0 {
-        if deq.len() > max_size {
-            max_size = deq.len();
+    seen.insert((*squad.position(), squad.ts));
+    queue.push(squad);
+
+    while let Some(squad) = queue.pop() {
+        let pos = squad.position();
+
+        // Done
+        if pos == &valley.finish {
+            // println!("Finish {:?} (ts={})", squad.get_trace_value(), squad.ts);
+            // println!("Finish \"DDWURRDLURWDDRRRDD\"");
+            return Some(squad);
         }
-        println!("size {} {}", deq.len(), max_size);
 
-        let state = deq.pop_front().unwrap();
-        let variants = valley.get_steps_at(state.next(), state.position());
-        for v in variants {
-            if v == valley.finish {
-                let new_state = state.apply(v);
-                println!(
-                    "Finish! {:?} (ts={})",
-                    new_state.get_trace_value(),
-                    new_state.ts
-                );
-                min_trace = new_state.ts;
-            }
+        let new_ts = squad.next();
+        let variants: Vec<Vector> = STEPS
+            .iter()
+            .map(|step| pos.add(step))
+            .filter(|pos| !valley.is_wall(pos))
+            .filter(|pos| !valley.is_blizzard(pos, new_ts))
+            .collect();
 
-            let new_state = state.apply(v);
+        // println!("Minute: {} ({})", squad.ts, squad.ts % valley.period());
+        // println!("Track: {:?}", squad.get_trace_value());
+        // println!("Position: {:?}", squad.position());
+        //
+        // for _ in 0..squad.ts {
+        //     valley.tick();
+        // }
+        // print_valley(&valley, Some(*pos));
+        // let left = valley.period() - squad.ts % valley.period();
+        // for _ in 0..left {
+        //     valley.tick();
+        // }
 
-            if !new_state.evaluate() {
-                continue;
-            }
+        for new_pos in variants {
+            let new_squad = squad.apply(new_pos);
 
-            if new_state.trace.len() <= min_trace {
-                deq.push_back(new_state);
+            // if new_ts == 14 && new_pos == Vector(3, 4) {
+            //     continue;
+            // }
+
+            // let c = pos.get_move(new_squad.position());
+            // println!(
+            //     "Variant for minute {}: move {} ({:?} => {:?})",
+            //     new_ts, c, pos, new_pos
+            // );
+
+            let pos = *new_squad.position();
+            if seen.insert((pos, new_squad.ts)) {
+                queue.push(new_squad);
             }
         }
+
+        // println!("");
     }
-    min_trace
+    None
+}
+
+fn part_one(mut valley: Valley) -> usize {
+    valley.save_blizzard_positions();
+    for _ in 0..valley.period() {
+        valley.tick();
+        valley.save_blizzard_positions();
+    }
+
+    // let variants: Vec<Vector> = STEPS
+    //     .iter()
+    //     .map(|step| pos.add(step))
+    //     .filter(|pos| !valley.is_wall(pos))
+    //     .filter(|pos| !valley.is_blizzard(pos, new_ts))
+    //     .collect();
+
+    if let Some(squad) = solve(&mut valley) {
+        // println!("pos at 13 : {:?}", &squad.trace[13]);
+        // return 0;
+
+        // simulate(&mut valley, &squad);
+        return squad.ts;
+    }
+
+    0
+}
+
+fn simulate(valley: &mut Valley, squad: &Squad) {
+    for (i, s) in squad.trace.iter().enumerate() {
+        println!("{:?}", &squad.get_trace_value());
+        print_valley(&valley, Some(*s));
+        valley.tick();
+        thread::sleep(Duration::from_millis(2000));
+        clear();
+    }
 }
 
 fn clear() {
