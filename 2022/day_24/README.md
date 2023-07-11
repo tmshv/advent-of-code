@@ -276,4 +276,4 @@ What is the fewest number of minutes required to avoid the blizzards and reach t
 cat input.txt | cargo run --release
 ```
 
-Result: ``
+Result: `260`

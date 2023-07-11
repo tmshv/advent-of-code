@@ -89,7 +89,7 @@ struct Squad {
 
 impl Ord for Squad {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.ts.cmp(&other.ts)
+        self.ts.cmp(&other.ts).reverse()
     }
 }
 
