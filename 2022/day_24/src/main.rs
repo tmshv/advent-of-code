@@ -382,6 +382,25 @@ fn part_one(valley: &Valley) -> usize {
     0
 }
 
+fn part_two(valley: &Valley) -> usize {
+    let start = valley.start;
+    let finish = valley.finish;
+    let mut ts = 0;
+    if let Some(squad) = solve(valley, start, finish, ts) {
+        ts = squad.ts;
+    }
+
+    if let Some(squad) = solve(valley, finish, start, ts) {
+        ts = squad.ts;
+    }
+
+    if let Some(squad) = solve(valley, start, finish, ts) {
+        ts = squad.ts;
+    }
+
+    ts
+}
+
 fn simulate(valley: &mut Valley, squad: &Squad) {
     for (i, s) in squad.trace.iter().enumerate() {
         println!("{:?}", &squad.get_trace_value());
@@ -406,6 +425,9 @@ fn main() {
 
     let result = part_one(&valley);
     println!("Part one: {}", result);
+
+    let result = part_two(&valley);
+    println!("Part two: {}", result);
 }
 
 #[cfg(test)]
