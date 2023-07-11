@@ -57,10 +57,6 @@ impl Vector {
         (x, y)
     }
 
-    fn is_zero(&self) -> bool {
-        self.0 == 0 && self.1 == 0
-    }
-
     fn in_bounds(&self, bounds: &(isize, isize, isize, isize)) -> bool {
         let (xmin, xmax, ymin, ymax) = bounds;
         let x = &self.0;
@@ -83,7 +79,6 @@ impl Vector {
 #[derive(Debug, Hash, Clone, PartialEq, Eq)]
 struct Squad {
     ts: usize,
-    // pos: Vector,
     trace: Vec<Vector>,
 }
 
@@ -105,13 +100,11 @@ impl Squad {
         trace.push(pos);
         Squad {
             ts: self.next(),
-            // pos,
             trace,
         }
     }
 
     fn position(&self) -> &Vector {
-        // &self.pos
         self.trace.last().unwrap()
     }
 
@@ -220,17 +213,13 @@ impl Valley {
     }
 
     fn is_wall(&self, pos: &Vector) -> bool {
-        if pos.0 < 0 || pos.1 < 0 {
-            return true;
+        if &self.start == pos || &self.finish == pos {
+            return false;
         }
-        if pos.0 >= self.grid[0].len() as isize || pos.1 >= self.grid.len() as isize {
-            return true;
-        }
+
+        let (xmin, xmax, ymin, ymax) = self.get_playground_bounds();
         let (x, y) = pos.as_index();
-        match self.grid[y][x] {
-            Tile::Wall => true,
-            _ => false,
-        }
+        x < xmin || x > xmax || y < ymin || y > ymax
     }
 
     fn is_blizzard(&self, pos: &Vector, ts: usize) -> bool {
@@ -347,59 +336,46 @@ fn print_valley(valley: &Valley, e: Option<Vector>) {
     }
 }
 
-fn solve(valley: &mut Valley) -> Option<Squad> {
-    valley.save_blizzard_positions();
-    for _ in 0..valley.period() {
-        valley.tick();
-        valley.save_blizzard_positions();
-    }
-
+fn solve(valley: &Valley, start: Vector, finish: Vector, ts: usize) -> Option<Squad> {
     let squad = Squad {
-        ts: 0,
-        trace: vec![valley.start],
+        ts,
+        trace: vec![start],
     };
 
     let mut seen = HashSet::new();
     let mut queue = BinaryHeap::new();
 
-    seen.insert((*squad.position(), squad.ts));
+    seen.insert((*squad.position(), squad.ts % valley.period()));
     queue.push(squad);
 
     while let Some(squad) = queue.pop() {
         let pos = squad.position();
 
         // Done
-        if pos == &valley.finish {
+        if pos == &finish {
             return Some(squad);
         }
 
         let new_ts = squad.next();
-        let variants: Vec<Vector> = STEPS
+        STEPS
             .iter()
             .map(|step| pos.add(step))
             .filter(|pos| !valley.is_wall(pos))
             .filter(|pos| !valley.is_blizzard(pos, new_ts))
-            .collect();
-
-        for new_pos in variants {
-            let new_squad = squad.apply(new_pos);
-            let pos = *new_squad.position();
-            if seen.insert((pos, new_squad.ts)) {
-                queue.push(new_squad);
-            }
-        }
+            .for_each(|pos| {
+                let new_squad = squad.apply(pos);
+                if seen.insert((*new_squad.position(), new_squad.ts % valley.period())) {
+                    queue.push(new_squad);
+                }
+            });
     }
     None
 }
 
-fn part_one(mut valley: Valley) -> usize {
-    valley.save_blizzard_positions();
-    for _ in 0..valley.period() {
-        valley.tick();
-        valley.save_blizzard_positions();
-    }
-
-    if let Some(squad) = solve(&mut valley) {
+fn part_one(valley: &Valley) -> usize {
+    let start = valley.start;
+    let finish = valley.finish;
+    if let Some(squad) = solve(valley, start, finish, 0) {
         return squad.ts;
     }
 
@@ -411,7 +387,7 @@ fn simulate(valley: &mut Valley, squad: &Squad) {
         println!("{:?}", &squad.get_trace_value());
         print_valley(&valley, Some(*s));
         valley.tick();
-        thread::sleep(Duration::from_millis(2000));
+        thread::sleep(Duration::from_millis(100));
         clear();
     }
 }
@@ -421,8 +397,14 @@ fn clear() {
 }
 
 fn main() {
-    let valley = read_input();
-    let result = part_one(valley);
+    let mut valley = read_input();
+    valley.save_blizzard_positions();
+    for _ in 0..valley.period() {
+        valley.tick();
+        valley.save_blizzard_positions();
+    }
+
+    let result = part_one(&valley);
     println!("Part one: {}", result);
 }
 
