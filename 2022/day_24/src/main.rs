@@ -14,9 +14,7 @@ const D: Vector = Vector(0, 1);
 const L: Vector = Vector(-1, 0);
 const R: Vector = Vector(1, 0);
 const W: Vector = Vector(0, 0);
-// const STEPS: [&Vector; 5] = [&R, &D, &U, &L, &W];
-// const STEPS: [&Vector; 5] = [&U, &R, &D, &L, &W];
-const STEPS: [&Vector; 5] = [&R, &L, &U, &D, &W];
+const STEPS: [&Vector; 5] = [&R, &D, &U, &L, &W];
 
 fn gcd(a: usize, b: usize) -> usize {
     let mut min = std::cmp::min(a, b);
@@ -111,10 +109,6 @@ impl Squad {
             trace,
         }
     }
-
-    // fn fingerprint(&self) -> (usize, Vector) {
-    //     (self.ts, *self.position())
-    // }
 
     fn position(&self) -> &Vector {
         // &self.pos
@@ -363,7 +357,6 @@ fn solve(valley: &mut Valley) -> Option<Squad> {
     let squad = Squad {
         ts: 0,
         trace: vec![valley.start],
-        // pos: valley.start,
     };
 
     let mut seen = HashSet::new();
@@ -377,8 +370,6 @@ fn solve(valley: &mut Valley) -> Option<Squad> {
 
         // Done
         if pos == &valley.finish {
-            // println!("Finish {:?} (ts={})", squad.get_trace_value(), squad.ts);
-            // println!("Finish \"DDWURRDLURWDDRRRDD\"");
             return Some(squad);
         }
 
@@ -390,39 +381,13 @@ fn solve(valley: &mut Valley) -> Option<Squad> {
             .filter(|pos| !valley.is_blizzard(pos, new_ts))
             .collect();
 
-        // println!("Minute: {} ({})", squad.ts, squad.ts % valley.period());
-        // println!("Track: {:?}", squad.get_trace_value());
-        // println!("Position: {:?}", squad.position());
-        //
-        // for _ in 0..squad.ts {
-        //     valley.tick();
-        // }
-        // print_valley(&valley, Some(*pos));
-        // let left = valley.period() - squad.ts % valley.period();
-        // for _ in 0..left {
-        //     valley.tick();
-        // }
-
         for new_pos in variants {
             let new_squad = squad.apply(new_pos);
-
-            // if new_ts == 14 && new_pos == Vector(3, 4) {
-            //     continue;
-            // }
-
-            // let c = pos.get_move(new_squad.position());
-            // println!(
-            //     "Variant for minute {}: move {} ({:?} => {:?})",
-            //     new_ts, c, pos, new_pos
-            // );
-
             let pos = *new_squad.position();
             if seen.insert((pos, new_squad.ts)) {
                 queue.push(new_squad);
             }
         }
-
-        // println!("");
     }
     None
 }
@@ -434,18 +399,7 @@ fn part_one(mut valley: Valley) -> usize {
         valley.save_blizzard_positions();
     }
 
-    // let variants: Vec<Vector> = STEPS
-    //     .iter()
-    //     .map(|step| pos.add(step))
-    //     .filter(|pos| !valley.is_wall(pos))
-    //     .filter(|pos| !valley.is_blizzard(pos, new_ts))
-    //     .collect();
-
     if let Some(squad) = solve(&mut valley) {
-        // println!("pos at 13 : {:?}", &squad.trace[13]);
-        // return 0;
-
-        // simulate(&mut valley, &squad);
         return squad.ts;
     }
 
