@@ -401,10 +401,9 @@ fn part_two(valley: &Valley) -> usize {
     ts
 }
 
-fn simulate(valley: &mut Valley, squad: &Squad) {
-    for (i, s) in squad.trace.iter().enumerate() {
-        println!("{:?}", &squad.get_trace_value());
-        print_valley(&valley, Some(*s));
+fn simulate(valley: &mut Valley) {
+    loop {
+        print_valley(&valley, None);
         valley.tick();
         thread::sleep(Duration::from_millis(100));
         clear();
@@ -422,6 +421,8 @@ fn main() {
         valley.tick();
         valley.save_blizzard_positions();
     }
+
+    // simulate(&mut valley);
 
     let result = part_one(&valley);
     println!("Part one: {}", result);
