@@ -1,11 +1,32 @@
 use std::io;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 struct Snafu(String);
 
 impl From<String> for Snafu {
     fn from(value: String) -> Self {
         Snafu(value)
+    }
+}
+
+impl From<isize> for Snafu {
+    fn from(value: isize) -> Self {
+        let mut remainder = value;
+        let mut out = String::default();
+        while remainder > 0 {
+            let c = match remainder % 5 {
+                0 => '0',
+                1 => '1',
+                2 => '2',
+                3 => '=',
+                4 => '-',
+                _ => unreachable!(),
+            };
+            out.push(c);
+            remainder += 2; // Magic is here
+            remainder /= 5;
+        }
+        Snafu(out.chars().rev().collect::<String>())
     }
 }
 
@@ -24,7 +45,7 @@ impl From<&Snafu> for isize {
                     '0' => 0 * m,
                     '1' => 1 * m,
                     '2' => 2 * m,
-                    _ => panic!("UB"),
+                    _ =>  unreachable!(),
                 }
             })
             .sum()
@@ -41,14 +62,12 @@ fn read_input() -> Vec<Snafu> {
 
 fn part_one(numbers: &Vec<Snafu>) -> String {
     let total: isize = numbers.iter().map(isize::from).sum();
-
-    String::from("?")
+    let snafu = Snafu::from(total);
+    snafu.0
 }
 
 fn main() {
     let numbers = read_input();
-
-    println!("{:?}", numbers);
 
     let result = part_one(&numbers);
     println!("Part one: {}", result);
@@ -98,5 +117,47 @@ mod tests {
 
         let snafu = Snafu::from(String::from("122"));
         assert_eq!(isize::from(&snafu), 37);
+    }
+
+    #[test]
+    fn test_decimal_to_snafu() {
+        let snafu = Snafu::from(String::from("1=-0-2"));
+        assert_eq!(Snafu::from(1747), snafu);
+
+        let snafu = Snafu::from(String::from("12111"));
+        assert_eq!(Snafu::from(906), snafu);
+
+        let snafu = Snafu::from(String::from("2=0="));
+        assert_eq!(Snafu::from(198), snafu);
+
+        let snafu = Snafu::from(String::from("21"));
+        assert_eq!(Snafu::from(11), snafu);
+
+        let snafu = Snafu::from(String::from("2=01"));
+        assert_eq!(Snafu::from(201), snafu);
+
+        let snafu = Snafu::from(String::from("111"));
+        assert_eq!(Snafu::from(31), snafu);
+
+        let snafu = Snafu::from(String::from("20012"));
+        assert_eq!(Snafu::from(1257), snafu);
+
+        let snafu = Snafu::from(String::from("112"));
+        assert_eq!(Snafu::from(32), snafu);
+
+        let snafu = Snafu::from(String::from("1=-1="));
+        assert_eq!(Snafu::from(353), snafu);
+
+        let snafu = Snafu::from(String::from("1-12"));
+        assert_eq!(Snafu::from(107), snafu);
+
+        let snafu = Snafu::from(String::from("12"));
+        assert_eq!(Snafu::from(7), snafu);
+
+        let snafu = Snafu::from(String::from("1="));
+        assert_eq!(Snafu::from(3), snafu);
+
+        let snafu = Snafu::from(String::from("122"));
+        assert_eq!(Snafu::from(37), snafu);
     }
 }

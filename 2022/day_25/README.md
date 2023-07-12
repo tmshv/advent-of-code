@@ -122,5 +122,5 @@ The Elves are starting to get cold. What SNAFU number do you supply to Bob's con
 cat input.txt | cargo run --release
 ```
 
-Result: ``
+Result: `2-20=01--0=0=0=2-120`
 
