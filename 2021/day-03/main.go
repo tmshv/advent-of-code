@@ -69,7 +69,7 @@ func solvePartOne(input []int, size int) int {
 	return gamma * epsilon
 }
 
-func filterByCommonBitCriteria(numbers []int, bit int, most bool) []int {
+func filterByCommonBitCriteria(numbers []int, bit int, takeMostCommon bool) []int {
 	mask := pow(2, bit)
 
 	// Count all Ones in numbers at Bit position
@@ -81,10 +81,10 @@ func filterByCommonBitCriteria(numbers []int, bit int, most bool) []int {
 	}
 
 	match := 0
-	onesIsMostCommon := ones/float64(len(numbers)) >= 0.5
-	if onesIsMostCommon && most {
+	oneIsMostCommon := ones/float64(len(numbers)) >= 0.5
+	if oneIsMostCommon && takeMostCommon {
 		match = 1
-	} else if !onesIsMostCommon && !most {
+	} else if !oneIsMostCommon && !takeMostCommon {
 		match = 1
 	}
 
