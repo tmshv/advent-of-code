@@ -19,9 +19,25 @@ type Board struct {
 func (b *Board) Mark(num int) bool {
 	b.Marked[num] = true
 
+    // Check win by row
 	for x := 0; x < b.Size; x++ {
 		count := 0
 		for y := 0; y < b.Size; y++ {
+			i := b.CellIndex(x, y)
+			n := b.Items[i]
+			if _, ok := b.Marked[n]; ok {
+				count++
+			}
+		}
+		if count == b.Size {
+			return true
+		}
+	}
+
+    // Check win by column
+	for y := 0; y < b.Size; y++ {
+		count := 0
+		for x := 0; x < b.Size; x++ {
 			i := b.CellIndex(x, y)
 			n := b.Items[i]
 			if _, ok := b.Marked[n]; ok {
@@ -37,18 +53,16 @@ func (b *Board) Mark(num int) bool {
 }
 
 func (b *Board) SumUnmarked() int {
-    sum := 0
-
+	sum := 0
 	for x := 0; x < b.Size; x++ {
 		for y := 0; y < b.Size; y++ {
 			i := b.CellIndex(x, y)
 			n := b.Items[i]
 			if _, ok := b.Marked[n]; !ok {
-                sum += n
+				sum += n
 			}
 		}
 	}
-
 	return sum
 }
 
@@ -125,8 +139,7 @@ func readInput() ([]int, []Board, error) {
 func solvePartOne(boards []Board, numbers []int) int {
 	for _, n := range numbers {
 		for _, b := range boards {
-			win := b.Mark(n)
-			if win {
+			if b.Mark(n) {
 				return n * b.SumUnmarked()
 			}
 		}
