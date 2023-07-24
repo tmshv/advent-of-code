@@ -16,10 +16,14 @@ type Board struct {
 	Marked map[int]bool
 }
 
+func (b *Board) Reset() {
+	b.Marked = make(map[int]bool)
+}
+
 func (b *Board) Mark(num int) bool {
 	b.Marked[num] = true
 
-    // Check win by row
+	// Check win by row
 	for x := 0; x < b.Size; x++ {
 		count := 0
 		for y := 0; y < b.Size; y++ {
@@ -34,7 +38,7 @@ func (b *Board) Mark(num int) bool {
 		}
 	}
 
-    // Check win by column
+	// Check win by column
 	for y := 0; y < b.Size; y++ {
 		count := 0
 		for x := 0; x < b.Size; x++ {
@@ -80,13 +84,13 @@ func (b *Board) CellIndex(row int, column int) int {
 	return (row * b.Size) + column
 }
 
-func newBoard5(numbers []int) Board {
-	return Board{5, numbers, make(map[int]bool)}
+func newBoard5(numbers []int) *Board {
+	return &Board{5, numbers, make(map[int]bool)}
 }
 
-func readInput() ([]int, []Board, error) {
+func readInput() ([]int, []*Board, error) {
 	numbers := []int{}
-	boards := []Board{}
+	boards := []*Board{}
 
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -136,7 +140,7 @@ func readInput() ([]int, []Board, error) {
 	return numbers, boards, nil
 }
 
-func solvePartOne(boards []Board, numbers []int) int {
+func solvePartOne(boards []*Board, numbers []int) int {
 	for _, n := range numbers {
 		for _, b := range boards {
 			if b.Mark(n) {
@@ -148,7 +152,19 @@ func solvePartOne(boards []Board, numbers []int) int {
 	return 0
 }
 
-func solvePartTwo(boards []Board, numbers []int) int {
+func solvePartTwo(boards []*Board, numbers []int) int {
+	win := map[*Board]int{}
+	for _, n := range numbers {
+		for _, b := range boards {
+			if b.Mark(n) {
+				win[b] = n
+				if len(win) == len(boards) { // End at this moment
+					return n * b.SumUnmarked()
+				}
+			}
+		}
+	}
+
 	return 0
 }
 
@@ -161,6 +177,10 @@ func main() {
 	var result int
 	result = solvePartOne(boards, numbers)
 	fmt.Printf("Part one: %v\n", result)
+
+	for _, b := range boards {
+		b.Reset()
+	}
 
 	result = solvePartTwo(boards, numbers)
 	fmt.Printf("Part two: %v\n", result)
