@@ -61,7 +61,7 @@ func solvePartOne(input []int, size int) int {
 		}
 	}
 
-    // invert gamma and trim high bits
+	// invert gamma and trim high bits
 	epsilon := ^gamma
 	mask := (1 << size) - 1
 	epsilon = epsilon & mask
@@ -69,8 +69,57 @@ func solvePartOne(input []int, size int) int {
 	return gamma * epsilon
 }
 
-func solvePartTwo(input []int) int {
-	return 0
+func filterByCommonBitCriteria(numbers []int, bit int, most bool) []int {
+	mask := pow(2, bit)
+
+	// Count all Ones in numbers at Bit position
+	ones := 0.0
+	for _, x := range numbers {
+		if x&mask > 0 {
+			ones += 1.0
+		}
+	}
+
+	match := 0
+	onesIsMostCommon := ones/float64(len(numbers)) >= 0.5
+	if onesIsMostCommon && most {
+		match = 1
+	} else if !onesIsMostCommon && !most {
+		match = 1
+	}
+
+	result := []int{}
+	for _, x := range numbers {
+		v := (x & mask) >> bit
+		if v == match {
+			result = append(result, x)
+		}
+	}
+	return result
+}
+
+func solvePartTwo(input []int, size int) int {
+	oxygen := 0
+	numbers := input
+	for i := size - 1; i >= 0; i-- {
+		numbers = filterByCommonBitCriteria(numbers, i, true)
+		if len(numbers) == 1 {
+			oxygen = numbers[0]
+			break
+		}
+	}
+
+	co2 := 0
+	numbers = input
+	for i := size - 1; i >= 0; i-- {
+		numbers = filterByCommonBitCriteria(numbers, i, false)
+		if len(numbers) == 1 {
+			co2 = numbers[0]
+			break
+		}
+	}
+
+	return oxygen * co2
 }
 
 func main() {
@@ -83,6 +132,6 @@ func main() {
 	result = solvePartOne(input, size)
 	fmt.Printf("Part one: %v\n", result)
 
-	result = solvePartTwo(input)
+	result = solvePartTwo(input, size)
 	fmt.Printf("Part two: %v\n", result)
 }
