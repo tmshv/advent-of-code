@@ -35,22 +35,57 @@ func readInput() ([]int, error) {
 }
 
 func median(numbers []int) int {
-    sort.Ints(numbers)
-    c := int(float64(len(numbers)) / 2.0)
-    return numbers[c]
+	sort.Ints(numbers)
+	c := int(float64(len(numbers)) / 2.0)
+	return numbers[c]
+}
+
+func min(numbers []int) int {
+	val := math.MaxInt32
+	for _, x := range numbers {
+		if x < val {
+			val = x
+		}
+	}
+	return val
+}
+
+func max(numbers []int) int {
+	val := 0
+	for _, x := range numbers {
+		if x > val {
+			val = x
+		}
+	}
+	return val
+}
+
+func arithmeticSum(num float64) float64 {
+	return ((2 + (num - 1.0)) / 2.0) * num
 }
 
 func solvePartOne(crabs []int) int {
-    goal := median(crabs)
-    fuel := 0.0
-    for _, crab := range crabs {
-        fuel += math.Abs(float64(crab - goal))
-    }
-    return int(fuel)
+	goal := median(crabs)
+	fuel := 0.0
+	for _, crab := range crabs {
+		fuel += math.Abs(float64(crab - goal))
+	}
+	return int(fuel)
 }
 
-func solvePartTwo(numbers []int) int {
-    return 0
+func solvePartTwo(crabs []int) int {
+    best := math.MaxInt32
+	for position := min(crabs); position < max(crabs); position++ {
+		fuel := 0
+		for _, crab := range crabs {
+			move := math.Abs(float64(crab - position))
+			fuel += int(arithmeticSum(move))
+		}
+        if fuel < best {
+            best = fuel
+        }
+	}
+	return best
 }
 
 func main() {
