@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"time"
 )
 
 type Point struct {
@@ -44,6 +45,15 @@ func (p *Point) Adjacents(pred func(p *Point) bool) []Point {
 type Grid struct {
 	RowSize int
 	Cells   []int8
+}
+
+func (grid *Grid) Clone() Grid {
+	cells := make([]int8, len(grid.Cells))
+	copy(cells, grid.Cells)
+	return Grid{
+		RowSize: grid.RowSize,
+		Cells:   cells,
+	}
 }
 
 func (grid *Grid) Bbox() (int, int, int, int) {
@@ -178,7 +188,7 @@ func readInput() (Grid, error) {
 	return Grid{RowSize: s, Cells: cells}, nil
 }
 
-func solvePartOne(grid *Grid) int {
+func solvePartOne(grid Grid) int {
 	count := 0
 	for i := 0; i < 100; i++ {
 		count += grid.Step()
@@ -186,8 +196,24 @@ func solvePartOne(grid *Grid) int {
 	return count
 }
 
-func solvePartTwo(grid *Grid) int {
-	return 0
+func solvePartTwo(grid Grid) int {
+	step := 0
+	for {
+		step += 1
+		if grid.Step() == len(grid.Cells) {
+			break
+		}
+	}
+	return step
+}
+
+func simulate(grid Grid) {
+	for {
+		grid.Step()
+		fmt.Print("\033[H\033[2J")
+		grid.Print()
+		time.Sleep(50 * time.Millisecond)
+	}
 }
 
 func main() {
@@ -197,9 +223,11 @@ func main() {
 	}
 
 	var result int
-	result = solvePartOne(&grid)
+	result = solvePartOne(grid.Clone())
 	fmt.Printf("Part one: %v\n", result)
 
-	result = solvePartTwo(&grid)
+	result = solvePartTwo(grid.Clone())
 	fmt.Printf("Part two: %v\n", result)
+
+	simulate(grid.Clone())
 }
