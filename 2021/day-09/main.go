@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"sort"
 	"strconv"
 )
 
@@ -96,8 +97,8 @@ func readInput() (Grid, error) {
 	return Grid{RowSize: s, Cells: cells}, nil
 }
 
-func solvePartOne(grid *Grid) int {
-	count := 0
+func findLowPoints(grid *Grid) []Point {
+	points := []Point{}
 	for i, val := range grid.Cells {
 		cell := grid.CoordAt(i)
 		adjacents := cell.Adjacents(func(adj *Point) bool {
@@ -110,15 +111,51 @@ func solvePartOne(grid *Grid) int {
 			}
 		}
 		if f == 0 {
-			count += int(val) + 1
+			points = append(points, cell)
 		}
+	}
+	return points
+}
+
+func solvePartOne(grid *Grid) int {
+	count := 0
+	for _, p := range findLowPoints(grid) {
+		val := grid.ValueAt(&p)
+		count += int(val) + 1
 	}
 	return count
 }
 
 func solvePartTwo(grid *Grid) int {
-	count := 0
-	return count
+    basins := []int{}
+	for _, low := range findLowPoints(grid) {
+		queue := []Point{low}
+		basin := map[Point]int8{}
+		for len(queue) > 0 {
+			cell := queue[0]
+			queue = queue[1:]
+			val := grid.ValueAt(&cell)
+			basin[cell] = val
+			adjacents := cell.Adjacents(func(adj *Point) bool {
+				if !grid.Contains(adj) {
+					return false
+				}
+				if grid.ValueAt(adj) == 9 {
+					return false
+				}
+				if _, ok := basin[*adj]; ok {
+					return false
+				}
+				return true
+			})
+			for _, adj := range adjacents {
+				queue = append(queue, adj)
+			}
+		}
+        basins = append(basins, len(basin))
+	}
+    sort.Sort(sort.Reverse(sort.IntSlice(basins)))
+	return basins[0] * basins[1] * basins[2]
 }
 
 func main() {
