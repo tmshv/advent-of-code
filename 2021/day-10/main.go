@@ -5,7 +5,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 )
+
+func median(numbers []int) int {
+    sort.Ints(numbers)
+    middle := float64(len(numbers)) / 2
+    return numbers[int(middle)]
+}
 
 func readInput() ([]string, error) {
 	lines := []string{}
@@ -54,8 +61,54 @@ func solvePartOne(lines []string) int {
 }
 
 func solvePartTwo(lines []string) int {
-	count := 0
-	return count
+	// pair := map[rune]rune{
+	// 	')': '(',
+	// 	']': '[',
+	// 	'}': '{',
+	// 	'>': '<',
+	// }
+	pair := map[rune]rune{
+		'(': ')',
+		'[': ']',
+		'{': '}',
+		'<': '>',
+	}
+	cost := map[rune]int{
+		')': 1,
+		']': 2,
+		'}': 3,
+		'>': 4,
+	}
+	scores := []int{}
+	for _, line := range lines {
+		stack := []rune{}
+		corrupt := false
+		for _, r := range line {
+			if _, ok := pair[r]; ok {
+				stack = append(stack, r)
+				continue
+			}
+
+			last := stack[len(stack)-1]
+			stack = stack[:len(stack)-1]
+			if r != pair[last] {
+				corrupt = true
+				break
+			}
+		}
+
+		if !corrupt {
+			score := 0
+			for i := len(stack)-1; i >= 0; i-- {
+				r := stack[i]
+				opposite := pair[r]
+				score *= 5
+				score += cost[opposite]
+			}
+			scores = append(scores, score)
+		}
+	}
+	return median(scores)
 }
 
 func main() {
