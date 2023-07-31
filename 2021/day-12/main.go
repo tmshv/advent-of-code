@@ -19,6 +19,7 @@ func caveIsSmall(cave string) bool {
 
 type Route struct {
 	Stops []string
+	twice string
 }
 
 func (r *Route) GetKey() string {
@@ -30,6 +31,7 @@ func (r *Route) Next(stop string) Route {
 	copy(stops, r.Stops)
 	return Route{
 		Stops: append(stops, stop),
+        twice: r.twice,
 	}
 }
 
@@ -41,14 +43,30 @@ func (r *Route) CurrentlyAt(stop string) bool {
 	return r.GetStop() == stop
 }
 
-func newRoute(first string) Route {
+func newRoute(first, twice string) Route {
 	return Route{
 		Stops: []string{first},
+		twice: twice,
 	}
 }
 
 type Graph struct {
 	Edges map[string][]string
+}
+
+func (g *Graph) Nodes ()[]string {
+    nodes := map[string]bool{}
+    for k, v := range g.Edges {
+        nodes[k] = true
+        for _, n := range v {
+            nodes[n] = true
+        }
+    }
+    result := []string{}
+    for n := range nodes{
+        result = append(result, n)
+    }
+    return result
 }
 
 func (g *Graph) Add(nodeFrom, nodeTo string) {
@@ -92,16 +110,19 @@ type Pathfinder struct {
 	CheckNext func(stop string, route *Route) bool
 }
 
-func (f *Pathfinder) Find(start, end string) []Route {
-	routes := []Route{}
-	queue := []Route{newRoute(start)}
+func (f *Pathfinder) Find(init []Route, end string) []Route {
+	routes := map[string]Route{}
+	queue := make([]Route, len(init))
+    for i, r := range init {
+        queue[i] = r
+    }
 	for len(queue) > 0 {
 		route := queue[0]
 		queue = queue[1:]
 
 		// Finished
 		if route.CurrentlyAt(end) {
-			routes = append(routes, route)
+			routes[route.GetKey()] = route
 			continue
 		}
 
@@ -111,7 +132,11 @@ func (f *Pathfinder) Find(start, end string) []Route {
 			}
 		}
 	}
-	return routes
+    result := []Route{}
+    for _, r := range routes {
+        result = append(result, r)
+    }
+	return result
 }
 
 func solvePartOne(graph *Graph) int {
@@ -126,7 +151,8 @@ func solvePartOne(graph *Graph) int {
 			// Can visit Small Caves only once
 			// Handling of start and end stops happened here
 			for _, s := range route.Stops {
-				if caveIsSmall(s) && s == stop {
+				// if caveIsSmall(s) && s == stop {
+				if s == stop {
 					return false
 				}
 			}
@@ -135,12 +161,64 @@ func solvePartOne(graph *Graph) int {
 			return true
 		},
 	}
-	routes := pf.Find("start", "end")
+    init := []Route{newRoute("start", "")}
+	routes := pf.Find(init, "end")
 	return len(routes)
 }
 
 func solvePartTwo(graph *Graph) int {
-	return 0
+	pf := Pathfinder{
+		Graph: graph,
+		CheckNext: func(stop string, route *Route) bool {
+			// Start is now available as next
+			if stop == "start" {
+				return false
+			}
+
+			// End is always available as next
+			if stop == "end" {
+				return true
+			}
+
+			// Can visit Big Caves anytime
+			if caveIsBig(stop) {
+				return true
+			}
+
+			// Can visit Small Caves only once
+            canHaveSuchStopsInRoute := 0
+            // But Cave marked as twice can be visited twice
+            if stop == route.twice {
+                canHaveSuchStopsInRoute = 1
+            }
+            count := 0
+			for _, s := range route.Stops {
+				if s == stop {
+					count ++
+				}
+			}
+            return count <= canHaveSuchStopsInRoute
+		},
+	}
+
+    smalls := []string {}
+    for _, stop := range graph.Nodes() {
+        if stop == "start" || stop == "end" {
+            continue
+        }
+        if caveIsSmall(stop) {
+            smalls = append(smalls, stop)
+        }
+    }
+
+    init := []Route{}
+    for _, stop := range smalls {
+        init = append(init, newRoute("start", stop))
+    }
+
+	routes := pf.Find(init, "end")
+
+	return len(routes)
 }
 
 func main() {
