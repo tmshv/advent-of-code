@@ -15,6 +15,10 @@ type Vector struct {
 	Y int
 }
 
+func (p *Vector) ToFloat64() (float64, float64) {
+	return float64(p.X), float64(p.Y)
+}
+
 func (p *Vector) Add(other *Vector) {
 	p.X += other.X
 	p.Y += other.Y
@@ -59,6 +63,12 @@ func (grid *Grid) Bounds() (Vector, Vector) {
 	return Vector{0, 0}, br
 }
 
+func (grid *Grid) Size() Vector {
+	s := grid.CoordAt(len(grid.Cells) - 1) // Last cell
+	s.Add(&Vector{1, 1})
+	return s
+}
+
 func (grid *Grid) Contains(cell *Vector) bool {
 	tl, br := grid.Bounds()
 	outside := cell.X < tl.X || cell.X > br.X || cell.Y < tl.Y || cell.Y > br.Y
@@ -85,6 +95,53 @@ func (grid *Grid) CellIndex(cell *Vector) int {
 func (grid *Grid) ValueAt(cell *Vector) int {
 	j := grid.CellIndex(cell)
 	return grid.Cells[j]
+}
+
+func (grid *Grid) IterCoords() <-chan Vector {
+	ch := make(chan Vector)
+
+	go func() {
+		defer close(ch)
+
+		tl, br := grid.Bounds()
+		br.Sub(&tl)
+		for y := tl.Y; y <= br.Y; y++ {
+			for x := tl.X; x <= br.X; x++ {
+				v := Vector{x, y}
+				ch <- v
+			}
+		}
+	}()
+
+	return ch
+}
+func (grid *Grid) Expand(times int) Grid {
+	originalSize := grid.Size()
+	tx, ty := originalSize.ToFloat64()
+
+	newRowSize := grid.RowSize * times
+	newGrid := Grid{
+		RowSize: newRowSize,
+		Cells:   make([]int, len(grid.Cells)*times*times),
+	}
+	for i := 0; i < len(newGrid.Cells); i++ {
+		pos := newGrid.CoordAt(i)
+		x, y := pos.ToFloat64()
+		shiftX := int(x / tx)
+		originalPosX := pos.X % originalSize.X
+		shiftY := int(y / ty)
+		originalPosY := pos.Y % originalSize.Y
+		op := Vector{originalPosX, originalPosY}
+		val := grid.ValueAt(&op)
+		val += shiftX
+		val += shiftY
+		if val > 9 {
+			val %= 9
+		}
+		newGrid.Cells[i] = val
+	}
+
+	return newGrid
 }
 
 func readInput() (Grid, error) {
@@ -182,7 +239,7 @@ func FindShort(grid Grid, start, end Vector) ([]Vector, error) {
 	heap.Push(&pq, &Stop{
 		Position: start,
 		Risk:     grid.ValueAt(&start),
-		index: 0,
+		index:    0,
 	})
 	parents := map[Vector]Vector{}
 	seen := map[Vector]bool{}
@@ -213,7 +270,7 @@ func FindShort(grid Grid, start, end Vector) ([]Vector, error) {
 		for adj := range adjacents {
 			// Ignore is P is visited
 			if _, visited := seen[adj]; visited {
-                continue
+				// continue
 			}
 			newRisk := score[pos] + grid.ValueAt(&adj)
 			oldRisk := math.MaxInt32
@@ -236,12 +293,33 @@ func FindShort(grid Grid, start, end Vector) ([]Vector, error) {
 	return nil, nil
 }
 
-func solvePartOne(grid Grid) int {
+func PrintRoute(grid Grid, route []Vector) {
+	stops := map[Vector]int{}
+	for _, v := range route {
+		risk := grid.ValueAt(&v)
+		stops[v] = risk
+	}
+	for v := range grid.IterCoords() {
+		char := "."
+		if risk, ok := stops[v]; ok {
+			char = fmt.Sprintf("%d", risk)
+		}
+		fmt.Print(char)
+
+		if v.X == grid.RowSize-1 {
+			fmt.Println()
+		}
+	}
+}
+
+func solve(grid Grid) int {
 	start, end := grid.Bounds()
 	route, err := FindShort(grid, start, end)
 	if err != nil {
 		return -1
 	}
+
+    PrintRoute(grid, route)
 
 	// Total risk from step 1
 	total := 0
@@ -250,30 +328,26 @@ func solvePartOne(grid Grid) int {
 		total += risk
 	}
 
-	tl, br := grid.Bounds()
-	br.Sub(&tl)
-	stops := map[Vector]int{}
-	for _, v := range route {
-	       risk := grid.ValueAt(&v)
-		stops[v] = risk
-	}
-	for y := tl.Y; y <= br.Y; y++ {
-		for x := tl.X; x <= br.X; x++ {
-			v := Vector{x, y}
-			char := "."
-			if risk, ok := stops[v]; ok {
-				char = fmt.Sprintf("%d", risk)
-			}
-			fmt.Print(char)
-		}
-		fmt.Println()
-	}
-
 	return total
 }
 
+func solvePartOne(grid Grid) int {
+	return solve(grid)
+}
+
 func solvePartTwo(grid Grid) int {
-	return 0
+	grid = grid.Expand(5)
+
+	// for v := range grid.IterCoords() {
+	// 	val := grid.ValueAt(&v)
+	// 	char := fmt.Sprintf("%d", val)
+	// 	fmt.Print(char)
+	// 	if v.X == grid.RowSize-1 {
+	// 		fmt.Println()
+	// 	}
+	// }
+
+	return solve(grid)
 }
 
 func main() {
