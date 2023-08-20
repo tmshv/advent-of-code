@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
-	// "log"
 	"math"
 )
 
@@ -44,62 +43,23 @@ type BitReader struct {
 	Position int
 }
 
-func (r *BitReader) Clone() BitReader {
-	return BitReader{
-		Bytes:    r.Bytes,
-		Position: r.Position,
-	}
-}
-
 func (r *BitReader) Done() bool {
-	// lastBit := len(r.Bytes)*8 - 1
-	// xs := r.GetSlice(lastBit - r.Position)
-	// for _, b := range xs {
-	// 	if b != 1 {
-	// 		return false
-	// 	}
-	// }
-	// return true
+	lastBit := len(r.Bytes)*8 - 1
+	xs := r.GetSlice(lastBit - r.Position)
 
-	i := floor(r.Position, 8)
-	last := r.Bytes[i:]
-	num := BytesToUint64(last)
-	skip := r.Position % 8
-	mask := pow(2, 64-skip) - 1
-	num &= uint64(mask)
-	return num == 0
-}
-
-func (r *BitReader) Read(size int) uint64 {
-	skip := r.Position % 8
-	result := r.GetByteFragment(size)
-
-	// Trim first bits
-	mask := pow(2, 64-skip) - 1
-	result &= uint64(mask)
-
-	// Trim last bits
-	result >>= 64 - skip - size
-
-	r.Position += size
-
-	return result
+	for _, b := range xs {
+		if b != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func (r *BitReader) ReadUint64(size int) uint64 {
 	bits := r.ReadSlice(size)
-	// if len(bits) > 4 {
-	// 	panic("Cannot read int from more than 32 bits")
-	// }
-
-	// val := 0
-	// for i, b := range bits {
-	// 	j := len(bits) - 1 - i
-	// 	val |= int(b) << j * 8
-	// }
-	// return val
-
-	return BytesToUint64(bits)
+	num := BytesToUint64(bits)
+	num >>= 64 - size
+	return num
 }
 
 func (r *BitReader) ReadSlice(size int) []byte {
@@ -111,6 +71,7 @@ func (r *BitReader) ReadSlice(size int) []byte {
 func (r *BitReader) GetSlice(size int) []byte {
 	i := floor(r.Position, 8)
 	j := floor(r.Position+size, 8)
+
 	frag := r.Bytes[i : j+1]
 	part := make([]byte, len(frag))
 	copy(part, frag)
@@ -138,29 +99,10 @@ func (r *BitReader) GetSlice(size int) []byte {
 	return part
 }
 
-func (r *BitReader) GetByteFragment(size int) uint64 {
-	i := floor(r.Position, 8)
-	j := floor(r.Position+size, 8)
-	// log.Println("Get Fragment", r.Position, size, i, j, r.Bytes)
-	if i == j {
-		return uint64(r.Bytes[i]) << 56 // 32 -> 24; 64 -> 56
-	}
-	part := r.Bytes[i : j+1]
-
-	var num uint64
-	for i, x := range part {
-		shift := 8 * (len(part) - 1 - i)
-		num |= uint64(x) << shift
-	}
-	num <<= 64 - len(part)*8
-	return num
-}
-
 type Packet struct {
-	Version int
-	TypeID  int
-	Value   int
-	// Body    []byte
+	Version  int
+	TypeID   int
+	Value    int
 	Children []Packet
 }
 
@@ -190,7 +132,7 @@ func (p Packet) IterAll() <-chan Packet {
 func PrintBytes(bytes []byte) {
 	// Print each byte in binary format
 	for _, b := range bytes {
-		fmt.Printf("%8d ", b)
+		fmt.Printf("%8X ", b)
 	}
 	fmt.Println()
 	for _, b := range bytes {
@@ -200,14 +142,14 @@ func PrintBytes(bytes []byte) {
 }
 
 func ReadPacket(r *BitReader) Packet {
-	packetVersion := r.Read(3)
-	packetType := r.Read(3)
+	packetVersion := r.ReadUint64(3)
+	packetType := r.ReadUint64(3)
 
 	// Parse literal value packet
 	if packetType == 4 {
 		parts := []uint64{}
 		for {
-			group := r.Read(5)
+			group := r.ReadUint64(5)
 			val := group & 0b1111
 			parts = append(parts, val)
 			groupStopMarker := group >> 4
@@ -229,11 +171,11 @@ func ReadPacket(r *BitReader) Packet {
 		}
 	}
 
-	lengthTypeID := r.Read(1)
+	lengthTypeID := r.ReadUint64(1)
 
 	// Parse 15bit
 	if lengthTypeID == 0 {
-		bodySize := int(r.Read(15))
+		bodySize := int(r.ReadUint64(15))
 		body := r.ReadSlice(bodySize)
 		children := []Packet{}
 		bodyReader := BitReader{body, 0}
@@ -249,7 +191,7 @@ func ReadPacket(r *BitReader) Packet {
 	}
 
 	// Parse 11bit
-	subpackets := int(r.Read(11))
+	subpackets := int(r.ReadUint64(11))
 	children := make([]Packet, subpackets)
 	for i := 0; i < subpackets; i++ {
 		children[i] = ReadPacket(r)

@@ -26,14 +26,10 @@ func readInput() ([]byte, error) {
 }
 
 func solvePartOne(bits []byte) int {
-	PrintBytes(bits)
 	reader := BitReader{bits, 0}
 	packet := ReadPacket(&reader)
-	log.Printf("Got Packet: %v (%v)", packet, reader.Done())
-
 	version := 0
 	for p := range packet.IterAll() {
-		log.Println("Interating packet", p, version)
 		version += p.Version
 	}
 	return version
@@ -48,6 +44,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// bits = []byte{
+	// 	0b11010001, 0b01001010, 0b01000100, 0b10000000, 0b00000000,
+	// }
 
 	var result int
 	result = solvePartOne(bits)

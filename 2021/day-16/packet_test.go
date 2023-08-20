@@ -17,6 +17,62 @@ func sliceEq(a, b []byte) bool {
 	return true
 }
 
+func TestReadDone(t *testing.T) {
+	var b []byte
+	var r BitReader
+
+	b = []byte{
+		0b00111000, 0b00000000, 0b01101111, 0b01000101, 0b00101001, 0b00010010, 0b00000000,
+	}
+	r = BitReader{b, 0}
+	if r.Done() {
+		t.Errorf("Bit sequence is not done at postion %v", r.Position)
+	}
+
+	b = []byte{
+		0b00111000, 0b00000000, 0b01101111, 0b01000101, 0b00101001, 0b00010010, 0b00000000,
+	}
+	r = BitReader{b, 48}
+	if !r.Done() {
+		PrintBytes(r.Bytes)
+		t.Errorf("Bit sequence is done at postion %v", r.Position)
+	}
+
+	b = []byte{
+		0b11010001, 0b01001010, 0b01000100, 0b10000000, 0b00000000,
+	}
+	r = BitReader{b, 27}
+	if !r.Done() {
+		PrintBytes(r.Bytes)
+		t.Errorf("Bit sequence is done at postion %v", r.Position)
+	}
+}
+
+func TestReadInt(t *testing.T) {
+	var r BitReader
+	var num uint64
+	b := []byte{
+		0b00111000, 0b00000000, 0b01101111, 0b01000101, 0b00101001, 0b00010010, 0b00000000,
+	}
+	r = BitReader{b, 0}
+
+	num = r.ReadUint64(3)
+	if num != 0b001 {
+		t.Errorf("%08b is not equal %08b", num, 0b001)
+	}
+
+	num = r.ReadUint64(5)
+	if num != 0b11000 {
+		t.Errorf("%08b is not equal %08b", num, 0b11000)
+	}
+
+	r.Position = 23
+	num = r.ReadUint64(3)
+	if num != 0b101 {
+		t.Errorf("%08b is not equal %08b", num, 0b101)
+	}
+}
+
 func TestReadSlice(t *testing.T) {
 	var r BitReader
 	var part []byte
@@ -187,22 +243,40 @@ func TestReadPacket2(t *testing.T) {
 	}
 }
 
-// func TestReadPacket3(t *testing.T) {
-// 	// 11000000 00000001 01010000 00000000 00000001 01100001 00010101 10100010 11100000 10000000 00101111 00011000 00100011 01000000
-// 	input := "C0015000016115A2E0802F182340"
-// 	bytes, err := hex.DecodeString(input)
-// 	if err != nil {
-// 		t.Error(err)
-// 	}
+func TestReadPacket3(t *testing.T) {
+	// 11000000 00000001 01010000 00000000 00000001 01100001 00010101 10100010 11100000 10000000 00101111 00011000 00100011 01000000
+	input := "C0015000016115A2E0802F182340"
+	bytes, err := hex.DecodeString(input)
+	if err != nil {
+		t.Error(err)
+	}
 
-// 	reader := BitReader{bytes, 0}
-// 	packet := ReadPacket(&reader)
+	reader := BitReader{bytes, 0}
+	packet := ReadPacket(&reader)
 
-// 	version := 0
-// 	for p := range packet.IterAll() {
-// 		version += p.Version
-// 	}
-// 	if version != 23 {
-// 		t.Errorf("Sum of versions of Packet %s is 23 not %d", input, version)
-// 	}
-// }
+	version := 0
+	for p := range packet.IterAll() {
+		version += p.Version
+	}
+	if version != 23 {
+		t.Errorf("Sum of versions of Packet %s is 23 not %d", input, version)
+	}
+}
+func TestReadPacket4(t *testing.T) {
+	input := "A0016C880162017C3686B18A3D4780"
+	bytes, err := hex.DecodeString(input)
+	if err != nil {
+		t.Error(err)
+	}
+
+	reader := BitReader{bytes, 0}
+	packet := ReadPacket(&reader)
+
+	version := 0
+	for p := range packet.IterAll() {
+		version += p.Version
+	}
+	if version != 31 {
+		t.Errorf("Sum of versions of Packet %s is 31 not %d", input, version)
+	}
+}
