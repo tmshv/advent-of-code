@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/hex"
-	"log"
 	"testing"
 )
 
@@ -176,8 +175,6 @@ func TestReadPacket2(t *testing.T) {
 		t.Error(err)
 	}
 
-	PrintBytes(bytes)
-
 	reader := BitReader{bytes, 0}
 	packet := ReadPacket(&reader)
 
@@ -186,12 +183,12 @@ func TestReadPacket2(t *testing.T) {
 		version += p.Version
 	}
 	if version != 12 {
-		log.Println(packet)
 		t.Errorf("Sum of versions of Packet %s is 12 not %d", input, version)
 	}
 }
 
 // func TestReadPacket3(t *testing.T) {
+// 	// 11000000 00000001 01010000 00000000 00000001 01100001 00010101 10100010 11100000 10000000 00101111 00011000 00100011 01000000
 // 	input := "C0015000016115A2E0802F182340"
 // 	bytes, err := hex.DecodeString(input)
 // 	if err != nil {

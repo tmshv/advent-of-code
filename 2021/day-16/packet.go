@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
+	// "log"
 	"math"
 )
 
@@ -51,22 +52,21 @@ func (r *BitReader) Clone() BitReader {
 }
 
 func (r *BitReader) Done() bool {
-	i := floor(r.Position, 8)
-	last := r.Bytes[i:]
-
-	// for _, b := range r.Bytes {
+	// lastBit := len(r.Bytes)*8 - 1
+	// xs := r.GetSlice(lastBit - r.Position)
+	// for _, b := range xs {
 	// 	if b != 1 {
 	// 		return false
 	// 	}
 	// }
 	// return true
 
+	i := floor(r.Position, 8)
+	last := r.Bytes[i:]
 	num := BytesToUint64(last)
-
 	skip := r.Position % 8
 	mask := pow(2, 64-skip) - 1
 	num &= uint64(mask)
-
 	return num == 0
 }
 
@@ -86,13 +86,29 @@ func (r *BitReader) Read(size int) uint64 {
 	return result
 }
 
-func (r *BitReader) ReadInt(size int) uint64 {
+func (r *BitReader) ReadUint64(size int) uint64 {
 	bits := r.ReadSlice(size)
+	// if len(bits) > 4 {
+	// 	panic("Cannot read int from more than 32 bits")
+	// }
+
+	// val := 0
+	// for i, b := range bits {
+	// 	j := len(bits) - 1 - i
+	// 	val |= int(b) << j * 8
+	// }
+	// return val
 
 	return BytesToUint64(bits)
 }
 
 func (r *BitReader) ReadSlice(size int) []byte {
+	part := r.GetSlice(size)
+	r.Position += size
+	return part
+}
+
+func (r *BitReader) GetSlice(size int) []byte {
 	i := floor(r.Position, 8)
 	j := floor(r.Position+size, 8)
 	frag := r.Bytes[i : j+1]
@@ -125,6 +141,7 @@ func (r *BitReader) ReadSlice(size int) []byte {
 func (r *BitReader) GetByteFragment(size int) uint64 {
 	i := floor(r.Position, 8)
 	j := floor(r.Position+size, 8)
+	// log.Println("Get Fragment", r.Position, size, i, j, r.Bytes)
 	if i == j {
 		return uint64(r.Bytes[i]) << 56 // 32 -> 24; 64 -> 56
 	}
