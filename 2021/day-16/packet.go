@@ -22,6 +22,13 @@ func floor(a, b int) int {
 	return int(x)
 }
 
+func boolToUint64(val bool) uint64 {
+	if val {
+		return 1
+	}
+	return 0
+}
+
 func Uint64ToBytes(num uint64) []byte {
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint64(b, num)
@@ -102,7 +109,7 @@ func (r *BitReader) GetSlice(size int) []byte {
 type Packet struct {
 	Version  int
 	TypeID   int
-	Value    int
+	Value    uint64
 	Children []Packet
 }
 
@@ -127,6 +134,93 @@ func (p Packet) IterAll() <-chan Packet {
 		defer close(ch)
 	}()
 	return ch
+}
+
+func (p *Packet) Operate() uint64 {
+	var result uint64
+	if p.TypeID == 0 {
+		result = 0
+		for _, packet := range p.Children {
+			x := packet.Operate()
+			result += x
+		}
+		return result
+	}
+	if p.TypeID == 1 {
+		result = 1
+		for _, packet := range p.Children {
+			x := packet.Operate()
+			result *= x
+		}
+		return result
+	}
+	if p.TypeID == 2 {
+		result = math.MaxUint64
+		for _, packet := range p.Children {
+			x := packet.Operate()
+			if x < result {
+				result = x
+			}
+		}
+		return result
+	}
+	if p.TypeID == 3 {
+		result = 0
+		for _, packet := range p.Children {
+			x := packet.Operate()
+			if x > result {
+				result = x
+			}
+		}
+		return result
+	}
+	if p.TypeID == 4 {
+		return uint64(p.Value)
+	}
+	if p.TypeID == 5 {
+		a := p.Children[0].Operate()
+		b := p.Children[1].Operate()
+		return boolToUint64(a > b)
+	}
+	if p.TypeID == 6 {
+		a := p.Children[0].Operate()
+		b := p.Children[1].Operate()
+		return boolToUint64(a < b)
+	}
+	if p.TypeID == 7 {
+		a := p.Children[0].Operate()
+		b := p.Children[1].Operate()
+		return boolToUint64(a == b)
+	}
+	return 0
+}
+
+func PrintPacket(packet *Packet, pad int) {
+	ops := map[int]string{
+		0: "+",
+		1: "*",
+		2: "min",
+		3: "max",
+		4: "val",
+		5: ">",
+		6: "<",
+		7: "=",
+	}
+	op := ops[packet.TypeID]
+
+	if packet.IsLiteral() {
+		fmt.Printf("%*dPacket %s=%d", pad*4, packet.Version, op, packet.Value)
+	} else {
+		fmt.Printf("%*dPacket %s", pad*4, packet.Version, op)
+	}
+
+	fmt.Println()
+	if !packet.IsLiteral() {
+		pad += 1
+		for _, sub := range packet.Children {
+			PrintPacket(&sub, pad)
+		}
+	}
 }
 
 func PrintBytes(bytes []byte) {
@@ -167,7 +261,7 @@ func ReadPacket(r *BitReader) Packet {
 		return Packet{
 			Version: int(packetVersion),
 			TypeID:  int(packetType),
-			Value:   int(value),
+			Value:   value,
 		}
 	}
 

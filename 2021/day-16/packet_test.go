@@ -280,3 +280,92 @@ func TestReadPacket4(t *testing.T) {
 		t.Errorf("Sum of versions of Packet %s is 31 not %d", input, version)
 	}
 }
+
+func TestPacketOperate(t *testing.T) {
+	var reader BitReader
+	var packet Packet
+	var input string
+	var bytes []byte
+	var ans uint64
+	var x uint64
+
+	input = "C200B40A82"
+	ans = 3
+	bytes, _ = hex.DecodeString(input)
+	reader = BitReader{bytes, 0}
+	packet = ReadPacket(&reader)
+	x = packet.Operate()
+	if x != ans {
+		t.Errorf("Operation of Packet %s is %d not %d", input, ans, x)
+	}
+
+	input = "04005AC33890"
+	ans = 54
+	bytes, _ = hex.DecodeString(input)
+	reader = BitReader{bytes, 0}
+	packet = ReadPacket(&reader)
+	x = packet.Operate()
+	if x != ans {
+		t.Errorf("Operation of Packet %s is %d not %d", input, ans, x)
+	}
+
+	input = "880086C3E88112"
+	ans = 7
+	bytes, _ = hex.DecodeString(input)
+	reader = BitReader{bytes, 0}
+	packet = ReadPacket(&reader)
+	x = packet.Operate()
+	if x != ans {
+		t.Errorf("Operation of Packet %s is %d not %d", input, ans, x)
+	}
+
+	input = "CE00C43D881120"
+	ans = 9
+	bytes, _ = hex.DecodeString(input)
+	reader = BitReader{bytes, 0}
+	packet = ReadPacket(&reader)
+	x = packet.Operate()
+	if x != ans {
+		t.Errorf("Operation of Packet %s is %d not %d", input, ans, x)
+	}
+
+	input = "D8005AC2A8F0"
+	ans = 1
+	bytes, _ = hex.DecodeString(input)
+	reader = BitReader{bytes, 0}
+	packet = ReadPacket(&reader)
+	x = packet.Operate()
+	if x != ans {
+		t.Errorf("Operation of Packet %s is %d not %d", input, ans, x)
+	}
+
+	input = "F600BC2D8F"
+	ans = 0
+	bytes, _ = hex.DecodeString(input)
+	reader = BitReader{bytes, 0}
+	packet = ReadPacket(&reader)
+	x = packet.Operate()
+	if x != ans {
+		t.Errorf("Operation of Packet %s is %d not %d", input, ans, x)
+	}
+
+	input = "9C005AC2F8F0"
+	ans = 0
+	bytes, _ = hex.DecodeString(input)
+	reader = BitReader{bytes, 0}
+	packet = ReadPacket(&reader)
+	x = packet.Operate()
+	if x != ans {
+		t.Errorf("Operation of Packet %s is %d not %d", input, ans, x)
+	}
+
+	input = "9C0141080250320F1802104A08"
+	ans = 1
+	bytes, _ = hex.DecodeString(input)
+	reader = BitReader{bytes, 0}
+	packet = ReadPacket(&reader)
+	x = packet.Operate()
+	if x != ans {
+		t.Errorf("Operation of Packet %s is %d not %d", input, ans, x)
+	}
+}

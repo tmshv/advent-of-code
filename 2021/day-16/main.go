@@ -25,18 +25,20 @@ func readInput() ([]byte, error) {
 	return bytes, nil
 }
 
-func solvePartOne(bits []byte) int {
+func solvePartOne(bits []byte) uint64 {
 	reader := BitReader{bits, 0}
 	packet := ReadPacket(&reader)
-	version := 0
+	var version uint64
 	for p := range packet.IterAll() {
-		version += p.Version
+		version += uint64(p.Version)
 	}
 	return version
 }
 
-func solvePartTwo(bits []byte) int {
-	return 0
+func solvePartTwo(bits []byte) uint64 {
+	reader := BitReader{bits, 0}
+	packet := ReadPacket(&reader)
+	return packet.Operate()
 }
 
 func main() {
@@ -45,11 +47,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// bits = []byte{
-	// 	0b11010001, 0b01001010, 0b01000100, 0b10000000, 0b00000000,
-	// }
-
-	var result int
+	var result uint64
 	result = solvePartOne(bits)
 	fmt.Printf("Part one: %v\n", result)
 
