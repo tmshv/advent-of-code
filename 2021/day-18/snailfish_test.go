@@ -241,3 +241,22 @@ func TestMagnitude(t *testing.T) {
 		}
 	}
 }
+
+func TestMagnitude2(t *testing.T) {
+	nums := []string{
+		"[[2,[[7,7],7]],[[5,8],[[9,3],[0,2]]]]",
+		"[[[0,[5,8]],[[1,7],[9,6]]],[[4,[1,2]],[[1,4],2]]]",
+	}
+	result := 3993
+
+    a, _ := NewSnailfish(nums[0])
+    for _, n := range nums[1:] {
+		b, _ := NewSnailfish(n)
+        s := a.Add(b)
+        s.Reduce()
+		m := s.Magnitude()
+		if m != result {
+			t.Errorf("Wrong magnitude of %s: %d is not equal %d", n, m, result)
+		}
+	}
+}

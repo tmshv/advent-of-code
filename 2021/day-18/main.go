@@ -7,15 +7,11 @@ import (
 	"os"
 )
 
-func readInput() ([]Snailfish, error) {
-	result := []Snailfish{}
+func readInput() ([]string, error) {
+	result := []string{}
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
-		row := scanner.Text()
-		num, err := NewSnailfish(row)
-		if err != nil {
-			return nil, err
-		}
+		num := scanner.Text()
 		result = append(result, num)
 	}
 	if err := scanner.Err(); err != nil {
@@ -25,17 +21,50 @@ func readInput() ([]Snailfish, error) {
 	return result, nil
 }
 
-func solvePartOne(ns []Snailfish) int {
-	sum := ns[0]
-	for _, n := range ns[1:] {
+func solvePartOne(ns []string) int {
+	numbers := make([]Snailfish, len(ns))
+	for i, n := range ns {
+		num, err := NewSnailfish(n)
+		if err != nil {
+			panic(err)
+		}
+		numbers[i] = num
+	}
+
+	sum := numbers[0]
+	for _, n := range numbers[1:] {
 		sum = sum.Add(n)
 		sum.Reduce()
 	}
 	return sum.Magnitude()
 }
 
-func solvePartTwo(ns []Snailfish) int {
-	return 0
+func solvePartTwo(ns []string) int {
+	max := 0
+	for i, a := range ns {
+		for j, b := range ns {
+			if i == j {
+				continue
+			}
+
+			sa, err := NewSnailfish(a)
+			if err != nil {
+				panic(err)
+			}
+			sb, _ := NewSnailfish(b)
+			if err != nil {
+				panic(err)
+			}
+			sum := sa.Add(sb)
+			sum.Reduce()
+
+			mag := sum.Magnitude()
+			if mag > max {
+				max = mag
+			}
+		}
+	}
+	return max
 }
 
 func main() {
@@ -45,6 +74,7 @@ func main() {
 	}
 
 	var result int
+
 	result = solvePartOne(numbers)
 	fmt.Printf("Part one: %v\n", result)
 

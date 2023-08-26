@@ -44,11 +44,7 @@ func (s *Snailfish) Reduce() {
 		if s.Split() {
 			continue
 		}
-
 		break
-		// res := s.ToString()
-		// reduced, _ := NewSnailfish(res)
-		// return reduced
 	}
 }
 
