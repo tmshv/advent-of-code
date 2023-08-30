@@ -8,91 +8,149 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"gonum.org/v1/gonum/mat"
 )
 
 type Sensor struct {
 	I        int
-	Position *Vector3
-	Matrix   *Matrix3D
-	Beacons  []Vector3
+	Position *Vector
+	Matrix   *mat.Dense
+	Beacons  []Vector
 }
 
 func (s *Sensor) Apply() Sensor {
-	beacons := make([]Vector3, len(s.Beacons))
+	var inv mat.Dense
+	err := inv.Inverse(s.Matrix)
+	if err != nil {
+		log.Fatalf("A is not invertible: %v", err)
+	}
+	beacons := make([]Vector, len(s.Beacons))
 	for i, b := range s.Beacons {
-    p := s.Position
-    // .ApplyMatrix3D(s.Matrix)
-    n := b.ApplyMatrix3D(s.Matrix)
-    n = n.Sub(p)
-    // n = n.Sub(s.Position)
-		beacons[i] = n
+		n := b.ApplyMatrix3D(&inv)
+		n = n.Add(s.Position)
+		beacons[i] = *n
 	}
 	return Sensor{
 		I:        s.I,
 		Position: s.Position,
-		Matrix:   NewIdentity(),
+		Matrix:   NewIdentityDense(),
 		Beacons:  beacons,
 	}
 }
 
-func MatrixFromVectors(a, b, c Vector3) *Matrix3D {
-	return NewMatrix3D([16]float64{
-		a.X, b.X, c.X, 0,
-		a.Y, b.Y, c.Y, 0,
-		a.Z, b.Z, c.Z, 0,
-		0, 0, 0, 1,
+func (s *Sensor) Orient(beacons []Vector) bool {
+	for _, matrix := range GetSensorVariants() {
+		var inv mat.Dense
+		err := inv.Inverse(matrix)
+		if err != nil {
+			log.Fatalf("A is not invertible: %v", err)
+		}
+		subtractCounts := map[Vector]int{}
+		for _, beacon := range beacons {
+			for _, b := range s.Beacons {
+				t := b.ApplyMatrix3D(&inv)
+				sub := beacon.Sub(t)
+				subtractCounts[*sub]++
+			}
+		}
+		for pos, count := range subtractCounts {
+			if count >= 12 {
+				s.Position = &pos
+				s.Matrix = matrix
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func NewIdentityDense() *mat.Dense {
+	return mat.NewDense(3, 3, []float64{
+		1, 0, 0,
+		0, 1, 0,
+		0, 0, 1,
 	})
 }
 
-func GetFourUpOrientationVariants(face, a, b Vector3) []Matrix3D {
-	return []Matrix3D{
-		*MatrixFromVectors(face, a, b),
-		*MatrixFromVectors(face, a, b.Mult(-1)),
-		*MatrixFromVectors(face, a.Mult(-1), b),
-		*MatrixFromVectors(face, a.Mult(-1), b.Mult(-1)),
+func MatrixFromVectors(a, b, c *Vector) *mat.Dense {
+	return mat.NewDense(3, 3, []float64{
+		a.X, a.Y, a.Z,
+		b.X, b.Y, b.Z,
+		c.X, c.Y, c.Z,
+	})
+}
+
+func GetFourUpOrientationVariants(face, a, b *Vector) []*mat.Dense {
+	return []*mat.Dense{
+		MatrixFromVectors(face, a, b),
+		MatrixFromVectors(face, a, b.Mult(-1)),
+		MatrixFromVectors(face, a.Mult(-1), b),
+		MatrixFromVectors(face, a.Mult(-1), b.Mult(-1)),
 	}
 }
 
-type Vector3 struct {
+type Vector struct {
 	X float64
 	Y float64
 	Z float64
 }
 
-func (v *Vector3) Mult(val float64) Vector3 {
-	return Vector3{
+func (v *Vector) Mult(val float64) *Vector {
+	return &Vector{
 		v.X * val,
 		v.Y * val,
 		v.Z * val,
 	}
 }
 
-func (v *Vector3) Add(val *Vector3) Vector3 {
-	return Vector3{
+func (v *Vector) Add(val *Vector) *Vector {
+	return &Vector{
 		v.X + val.X,
 		v.Y + val.Y,
 		v.Z + val.Z,
 	}
 }
 
-func (v *Vector3) Sub(val *Vector3) Vector3 {
-	return Vector3{
+func (v *Vector) Sub(val *Vector) *Vector {
+	return &Vector{
 		v.X - val.X,
 		v.Y - val.Y,
 		v.Z - val.Z,
 	}
 }
 
-func (v *Vector3) ApplyMatrix3D(m *Matrix3D) Vector3 {
-	return Vector3{
-		m.v[v11]*v.X + m.v[v21]*v.Y + m.v[v31]*v.Z + m.v[v41],
-		m.v[v12]*v.X + m.v[v22]*v.Y + m.v[v32]*v.Z + m.v[v42],
-		m.v[v13]*v.X + m.v[v23]*v.Y + m.v[v33]*v.Z + m.v[v43],
+func (v *Vector) ApplyMatrix3D(m *mat.Dense) *Vector {
+	x11 := m.At(0, 0)
+	x12 := m.At(1, 0)
+	x13 := m.At(2, 0)
+
+	x21 := m.At(0, 1)
+	x22 := m.At(1, 1)
+	x23 := m.At(2, 1)
+
+	x31 := m.At(0, 2)
+	x32 := m.At(1, 2)
+	x33 := m.At(2, 2)
+
+	// x41 := m.At(0, 3)
+	// x42 := m.At(1, 3)
+	// x43 := m.At(2, 3)
+
+	// return &Vector{
+	// 	x11*v.X + x21*v.Y + x31*v.Z + x41,
+	// 	x12*v.X + x22*v.Y + x32*v.Z + x42,
+	// 	x13*v.X + x23*v.Y + x33*v.Z + x43,
+	// }
+	return &Vector{
+		x11*v.X + x21*v.Y + x31*v.Z,
+		x12*v.X + x22*v.Y + x32*v.Z,
+		x13*v.X + x23*v.Y + x33*v.Z,
 	}
 }
 
-func NewVector3(val []float64) *Vector3 {
-	return &Vector3{
+func NewVector3(val []float64) *Vector {
+	return &Vector{
 		val[0],
 		val[1],
 		val[2],
@@ -103,7 +161,7 @@ func readInput() ([]Sensor, error) {
 	sensors := []Sensor{}
 	scanner := bufio.NewScanner(os.Stdin)
 
-	var buffer []Vector3
+	var buffer []Vector
 	i := 0
 	for {
 		// Skip row --- scanner X ---
@@ -112,7 +170,7 @@ func readInput() ([]Sensor, error) {
 			break
 		}
 
-		buffer = []Vector3{}
+		buffer = []Vector{}
 		for scanner.Scan() {
 			row := scanner.Text()
 			if row == "" {
@@ -150,58 +208,119 @@ func readInput() ([]Sensor, error) {
 	return sensors, nil
 }
 
-func GetSensorVariants() []Matrix3D {
-	var vs []Matrix3D
-	variants := []Matrix3D{}
+func GetSensorVariants() []*mat.Dense {
+	var vs []*mat.Dense
+	variants := []*mat.Dense{}
 
 	vs = GetFourUpOrientationVariants(
-		Vector3{1, 0, 0},
-		Vector3{0, 1, 0},
-		Vector3{0, 0, 1},
+		&Vector{1, 0, 0},
+		&Vector{0, 1, 0},
+		&Vector{0, 0, 1},
+	)
+	for _, x := range vs {
+		variants = append(variants, x)
+	}
+
+	//
+	vs = GetFourUpOrientationVariants(
+		&Vector{1, 0, 0},
+		&Vector{0, 0, 1},
+		&Vector{0, 1, 0},
 	)
 	for _, x := range vs {
 		variants = append(variants, x)
 	}
 
 	vs = GetFourUpOrientationVariants(
-		Vector3{-1, 0, 0},
-		Vector3{0, 1, 0},
-		Vector3{0, 0, 1},
+		&Vector{-1, 0, 0},
+		&Vector{0, 1, 0},
+		&Vector{0, 0, 1},
+	)
+	for _, x := range vs {
+		variants = append(variants, x)
+	}
+
+	//
+	vs = GetFourUpOrientationVariants(
+		&Vector{-1, 0, 0},
+		&Vector{0, 0, 1},
+		&Vector{0, 1, 0},
 	)
 	for _, x := range vs {
 		variants = append(variants, x)
 	}
 
 	vs = GetFourUpOrientationVariants(
-		Vector3{0, 1, 0},
-		Vector3{1, 0, 0},
-		Vector3{0, 0, 1},
+		&Vector{0, 1, 0},
+		&Vector{1, 0, 0},
+		&Vector{0, 0, 1},
+	)
+	for _, x := range vs {
+		variants = append(variants, x)
+	}
+
+	//
+	vs = GetFourUpOrientationVariants(
+		&Vector{0, 1, 0},
+		&Vector{0, 0, 1},
+		&Vector{1, 0, 0},
 	)
 	for _, x := range vs {
 		variants = append(variants, x)
 	}
 
 	vs = GetFourUpOrientationVariants(
-		Vector3{0, -1, 0},
-		Vector3{1, 0, 0},
-		Vector3{0, 0, 1},
+		&Vector{0, -1, 0},
+		&Vector{1, 0, 0},
+		&Vector{0, 0, 1},
+	)
+	for _, x := range vs {
+		variants = append(variants, x)
+	}
+
+	//
+	vs = GetFourUpOrientationVariants(
+		&Vector{0, -1, 0},
+		&Vector{0, 0, 1},
+		&Vector{1, 0, 0},
 	)
 	for _, x := range vs {
 		variants = append(variants, x)
 	}
 
 	vs = GetFourUpOrientationVariants(
-		Vector3{0, 0, 1},
-		Vector3{1, 0, 0},
-		Vector3{0, 1, 0},
+		&Vector{0, 0, 1},
+		&Vector{1, 0, 0},
+		&Vector{0, 1, 0},
 	)
 	for _, x := range vs {
 		variants = append(variants, x)
 	}
+
+	//
 	vs = GetFourUpOrientationVariants(
-		Vector3{0, 0, -1},
-		Vector3{1, 0, 0},
-		Vector3{0, 1, 0},
+		&Vector{0, 0, 1},
+		&Vector{0, 1, 0},
+		&Vector{1, 0, 0},
+	)
+	for _, x := range vs {
+		variants = append(variants, x)
+	}
+
+	vs = GetFourUpOrientationVariants(
+		&Vector{0, 0, -1},
+		&Vector{1, 0, 0},
+		&Vector{0, 1, 0},
+	)
+	for _, x := range vs {
+		variants = append(variants, x)
+	}
+
+	//
+	vs = GetFourUpOrientationVariants(
+		&Vector{0, 0, -1},
+		&Vector{0, 1, 0},
+		&Vector{1, 0, 0},
 	)
 	for _, x := range vs {
 		variants = append(variants, x)
@@ -210,79 +329,60 @@ func GetSensorVariants() []Matrix3D {
 	return variants
 }
 
-func AdjustSensor(sensor *Sensor, beacons []Vector3) bool {
-	for _, matrix := range GetSensorVariants() {
-		subtractCounts := map[Vector3]int{}
-		for _, beacon := range beacons {
-			for _, b := range sensor.Beacons {
-				t := b.ApplyMatrix3D(&matrix)
-				sub := beacon.Sub(&t)
-				subtractCounts[sub]++
+func solvePartOne(sensors []Sensor) int {
+	// Algorhitm
+	// Each scanner have a transfromation matrix 4x4
+	// Scanner 0 have identity 4x4 matrix
+	// Other scanners have no known matrix
+	// Try each 24 variant of possible tranformation
+	// on next unchecked scanner
+	// Find inverse of tranformation matrix
+	// and apply this inverted matrix on scanner's beacons
+	// Check transformed beacons on one of known scanner
+	// by subtracting beacons A from beacons B
+	// Count this results: common beacons should have same result
+	// If count value >= 12
+	// This two scanners have overlaps
+	// So apply transformation to this Sensor
+	// Its Position is a Vectors counted 12 times
+	// Apply transformation to scanner to orient it
+	// according to 0 scanner
+
+	// 0 Sensor is identity
+	sensors[0].Position = &Vector{}
+	sensors[0].Matrix = NewIdentityDense()
+
+	oriented := []Sensor{
+		sensors[0],
+	}
+	remaining := sensors[1:]
+	for len(remaining) > 0 {
+		s := remaining[0]
+		remaining = remaining[1:]
+		ok := false
+		for _, f := range oriented {
+			if s.Orient(f.Beacons) {
+				oriented = append(oriented, s.Apply())
+				ok = true
+				break
 			}
 		}
-		for pos, count := range subtractCounts {
-			if count >= 12 {
-				sensor.Position = &pos
-				sensor.Matrix = &matrix
-				return true
-			// } else {
-   //      log.Printf("%+v", subtractCounts)
-      }
+		if !ok {
+			remaining = append(remaining, s)
 		}
 	}
-	return false
-}
 
-func solvePartOne(sensors []Sensor) int {
-	// 0 Sensor is identity
-	sensors[0].Position = &Vector3{}
-	sensors[0].Matrix = NewIdentity()
+	beaconSet := map[Vector]bool{}
+	for _, s := range oriented {
+		for _, b := range s.Beacons {
+			beaconSet[b] = true
+		}
+	}
 
-	// found := []Sensor{
-	// 	sensors[0],
-	// }
-	// q := sensors[1:]
-	// for len(q) > 0 {
-	// 	log.Printf("found=%d remaining=%d", len(found), len(q))
-	// 	next := []Sensor{}
-	// 	for _, blank := range q {
-	// 		a := true
-	// 		for _, f := range found {
-	// 			if AdjustSensor(&blank, &f) {
-	//          r := blank.Apply()
-	// 				found = append(found, r)
-	// 				a = false
-	// 				break
-	// 			}
-	// 		}
-	// 		if a {
-	// 			next = append(next, blank)
-	// 		}
-	// 	}
-	// 	q = next
-	// }
-
-	return len(sensors)
+	return len(beaconSet)
 }
 
 func solvePartTwo(sensors []Sensor) int {
-	// 0 Sensor is identity
-	sensors[0].Position = &Vector3{}
-	sensors[0].Matrix = NewIdentity()
-
-	sensor0 := sensors[0]
-
-	s1 := sensors[1]
-	if AdjustSensor(&s1, sensor0.Beacons) {
-		log.Printf("S1 position: %v", s1.Position)
-		s1 = s1.Apply()
-	}
-
-	s := sensors[4]
-	if AdjustSensor(&s, s1.Beacons) {
-		log.Printf("Found position: %v", s.Position)
-	}
-
 	return 0
 }
 
