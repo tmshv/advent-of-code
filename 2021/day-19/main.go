@@ -13,16 +13,15 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-type Sensor struct {
-	I        int
-	Position *Vector
-	Matrix   *mat.Dense
-	Beacons  []Vector
+type Scanner struct {
+	Beacons        []Vector
+	Position       *Vector
+	Transformation *mat.Dense
 }
 
-func (s *Sensor) Apply() Sensor {
+func (s *Scanner) ApplyTransform() Scanner {
 	var inv mat.Dense
-	err := inv.Inverse(s.Matrix)
+	err := inv.Inverse(s.Transformation)
 	if err != nil {
 		log.Fatalf("A is not invertible: %v", err)
 	}
@@ -32,16 +31,15 @@ func (s *Sensor) Apply() Sensor {
 		n = n.Add(s.Position)
 		beacons[i] = *n
 	}
-	return Sensor{
-		I:        s.I,
-		Position: s.Position,
-		Matrix:   NewIdentityDense(),
-		Beacons:  beacons,
+	return Scanner{
+		Position:       s.Position,
+		Transformation: NewIdentityDense(),
+		Beacons:        beacons,
 	}
 }
 
-func (s *Sensor) Orient(beacons []Vector) bool {
-	for _, matrix := range GetSensorVariants() {
+func (s *Scanner) Orient(beacons []Vector) bool {
+	for _, matrix := range GetTransformVariations() {
 		var inv mat.Dense
 		err := inv.Inverse(matrix)
 		if err != nil {
@@ -58,7 +56,7 @@ func (s *Sensor) Orient(beacons []Vector) bool {
 		for pos, count := range subtractCounts {
 			if count >= 12 {
 				s.Position = &pos
-				s.Matrix = matrix
+				s.Transformation = matrix
 				return true
 			}
 		}
@@ -66,35 +64,14 @@ func (s *Sensor) Orient(beacons []Vector) bool {
 	return false
 }
 
-func NewIdentityDense() *mat.Dense {
-	return mat.NewDense(3, 3, []float64{
-		1, 0, 0,
-		0, 1, 0,
-		0, 0, 1,
-	})
-}
-
-func MatrixFromVectors(a, b, c *Vector) *mat.Dense {
-	return mat.NewDense(3, 3, []float64{
-		a.X, a.Y, a.Z,
-		b.X, b.Y, b.Z,
-		c.X, c.Y, c.Z,
-	})
-}
-
-func GetFourUpOrientationVariants(face, a, b *Vector) []*mat.Dense {
-	return []*mat.Dense{
-		MatrixFromVectors(face, a, b),
-		MatrixFromVectors(face, a, b.Mult(-1)),
-		MatrixFromVectors(face, a.Mult(-1), b),
-		MatrixFromVectors(face, a.Mult(-1), b.Mult(-1)),
-	}
-}
-
 type Vector struct {
 	X float64
 	Y float64
 	Z float64
+}
+
+func (v *Vector) ToArray() []float64 {
+	return []float64{v.X, v.Y, v.Z}
 }
 
 func (v *Vector) Mult(val float64) *Vector {
@@ -123,9 +100,9 @@ func (v *Vector) Sub(val *Vector) *Vector {
 
 func (v *Vector) Abs() *Vector {
 	return &Vector{
-    math.Abs(v.X),
-    math.Abs(v.Y),
-    math.Abs(v.Z),
+		math.Abs(v.X),
+		math.Abs(v.Y),
+		math.Abs(v.Z),
 	}
 }
 
@@ -150,8 +127,8 @@ func (v *Vector) ApplyMatrix3D(m *mat.Dense) *Vector {
 }
 
 func (v *Vector) ManhattanDistance(val *Vector) float64 {
-  s := v.Sub(val).Abs()
-  return s.X + s.Y + s.Z
+	s := v.Sub(val).Abs()
+	return s.X + s.Y + s.Z
 }
 
 func NewVector3(val []float64) *Vector {
@@ -162,12 +139,19 @@ func NewVector3(val []float64) *Vector {
 	}
 }
 
-func readInput() ([]Sensor, error) {
-	sensors := []Sensor{}
+func NewIdentityDense() *mat.Dense {
+	return mat.NewDense(3, 3, []float64{
+		1, 0, 0,
+		0, 1, 0,
+		0, 0, 1,
+	})
+}
+
+func readInput() ([]Scanner, error) {
+	result := []Scanner{}
 	scanner := bufio.NewScanner(os.Stdin)
 
 	var buffer []Vector
-	i := 0
 	for {
 		// Skip row --- scanner X ---
 		// Stop at EOL
@@ -196,145 +180,99 @@ func readInput() ([]Sensor, error) {
 			buffer = append(buffer, *NewVector3(numbers))
 		}
 
-		s := Sensor{
-			I:        i,
-			Position: nil,
-			Matrix:   nil,
-			Beacons:  buffer,
-		}
-		sensors = append(sensors, s)
-		i++
+		result = append(result, Scanner{buffer, nil, nil})
 	}
 
 	if err := scanner.Err(); err != nil {
 		return nil, err
 	}
 
-	return sensors, nil
+	return result, nil
 }
 
-func GetSensorVariants() []*mat.Dense {
-	var vs []*mat.Dense
+func GetEightOrientationVariants(face, up, side *Vector) []*mat.Dense {
+	a := face.ToArray()
+	b := up.ToArray()
+	c := side.ToArray()
+	return []*mat.Dense{
+		mat.NewDense(3, 3, []float64{
+			a[0], b[0], c[0],
+			a[1], b[1], c[1],
+			a[2], b[2], c[2],
+		}),
+		mat.NewDense(3, 3, []float64{
+			a[0], -b[0], c[0],
+			a[1], -b[1], c[1],
+			a[2], -b[2], c[2],
+		}),
+		mat.NewDense(3, 3, []float64{
+			a[0], b[0], -c[0],
+			a[1], b[1], -c[1],
+			a[2], b[2], -c[2],
+		}),
+		mat.NewDense(3, 3, []float64{
+			a[0], -b[0], -c[0],
+			a[1], -b[1], -c[1],
+			a[2], -b[2], -c[2],
+		}),
+		mat.NewDense(3, 3, []float64{
+			-a[0], b[0], c[0],
+			-a[1], b[1], c[1],
+			-a[2], b[2], c[2],
+		}),
+		mat.NewDense(3, 3, []float64{
+			-a[0], -b[0], c[0],
+			-a[1], -b[1], c[1],
+			-a[2], -b[2], c[2],
+		}),
+		mat.NewDense(3, 3, []float64{
+			-a[0], b[0], -c[0],
+			-a[1], b[1], -c[1],
+			-a[2], b[2], -c[2],
+		}),
+		mat.NewDense(3, 3, []float64{
+			-a[0], -b[0], -c[0],
+			-a[1], -b[1], -c[1],
+			-a[2], -b[2], -c[2],
+		}),
+	}
+}
+
+func GetTransformVariations() []*mat.Dense {
 	variants := []*mat.Dense{}
 
-	vs = GetFourUpOrientationVariants(
-		&Vector{1, 0, 0},
-		&Vector{0, 1, 0},
-		&Vector{0, 0, 1},
-	)
-	for _, x := range vs {
+	i := Vector{1, 0, 0}
+	j := Vector{0, 1, 0}
+	k := Vector{0, 0, 1}
+
+	for _, x := range GetEightOrientationVariants(&i, &j, &k) {
 		variants = append(variants, x)
 	}
 
-	//
-	vs = GetFourUpOrientationVariants(
-		&Vector{1, 0, 0},
-		&Vector{0, 0, 1},
-		&Vector{0, 1, 0},
-	)
-	for _, x := range vs {
+	for _, x := range GetEightOrientationVariants(&i, &k, &j) {
 		variants = append(variants, x)
 	}
 
-	vs = GetFourUpOrientationVariants(
-		&Vector{-1, 0, 0},
-		&Vector{0, 1, 0},
-		&Vector{0, 0, 1},
-	)
-	for _, x := range vs {
+	for _, x := range GetEightOrientationVariants(&j, &i, &k) {
 		variants = append(variants, x)
 	}
 
-	//
-	vs = GetFourUpOrientationVariants(
-		&Vector{-1, 0, 0},
-		&Vector{0, 0, 1},
-		&Vector{0, 1, 0},
-	)
-	for _, x := range vs {
+	for _, x := range GetEightOrientationVariants(&j, &k, &i) {
 		variants = append(variants, x)
 	}
 
-	vs = GetFourUpOrientationVariants(
-		&Vector{0, 1, 0},
-		&Vector{1, 0, 0},
-		&Vector{0, 0, 1},
-	)
-	for _, x := range vs {
+	for _, x := range GetEightOrientationVariants(&k, &i, &j) {
 		variants = append(variants, x)
 	}
 
-	//
-	vs = GetFourUpOrientationVariants(
-		&Vector{0, 1, 0},
-		&Vector{0, 0, 1},
-		&Vector{1, 0, 0},
-	)
-	for _, x := range vs {
-		variants = append(variants, x)
-	}
-
-	vs = GetFourUpOrientationVariants(
-		&Vector{0, -1, 0},
-		&Vector{1, 0, 0},
-		&Vector{0, 0, 1},
-	)
-	for _, x := range vs {
-		variants = append(variants, x)
-	}
-
-	//
-	vs = GetFourUpOrientationVariants(
-		&Vector{0, -1, 0},
-		&Vector{0, 0, 1},
-		&Vector{1, 0, 0},
-	)
-	for _, x := range vs {
-		variants = append(variants, x)
-	}
-
-	vs = GetFourUpOrientationVariants(
-		&Vector{0, 0, 1},
-		&Vector{1, 0, 0},
-		&Vector{0, 1, 0},
-	)
-	for _, x := range vs {
-		variants = append(variants, x)
-	}
-
-	//
-	vs = GetFourUpOrientationVariants(
-		&Vector{0, 0, 1},
-		&Vector{0, 1, 0},
-		&Vector{1, 0, 0},
-	)
-	for _, x := range vs {
-		variants = append(variants, x)
-	}
-
-	vs = GetFourUpOrientationVariants(
-		&Vector{0, 0, -1},
-		&Vector{1, 0, 0},
-		&Vector{0, 1, 0},
-	)
-	for _, x := range vs {
-		variants = append(variants, x)
-	}
-
-	//
-	vs = GetFourUpOrientationVariants(
-		&Vector{0, 0, -1},
-		&Vector{0, 1, 0},
-		&Vector{1, 0, 0},
-	)
-	for _, x := range vs {
+	for _, x := range GetEightOrientationVariants(&k, &j, &i) {
 		variants = append(variants, x)
 	}
 
 	return variants
 }
 
-func solve(sensors []Sensor) []Sensor {
+func solve(scanners []Scanner) []Scanner {
 	// Algorhitm
 	// Each scanner have a transfromation matrix 4x4
 	// Scanner 0 have identity 4x4 matrix
@@ -354,20 +292,20 @@ func solve(sensors []Sensor) []Sensor {
 	// according to 0 scanner
 
 	// 0 Sensor is identity
-	sensors[0].Position = &Vector{}
-	sensors[0].Matrix = NewIdentityDense()
+	scanners[0].Position = &Vector{}
+	scanners[0].Transformation = NewIdentityDense()
 
-	oriented := []Sensor{
-		sensors[0],
+	oriented := []Scanner{
+		scanners[0],
 	}
-	remaining := sensors[1:]
+	remaining := scanners[1:]
 	for len(remaining) > 0 {
 		s := remaining[0]
 		remaining = remaining[1:]
 		ok := false
 		for _, f := range oriented {
 			if s.Orient(f.Beacons) {
-				oriented = append(oriented, s.Apply())
+				oriented = append(oriented, s.ApplyTransform())
 				ok = true
 				break
 			}
@@ -380,45 +318,45 @@ func solve(sensors []Sensor) []Sensor {
 	return oriented
 }
 
-func solvePartOne(sensors []Sensor) int {
-	beaconSet := map[Vector]bool{}
-	for _, s := range sensors {
+func solvePartOne(scanners []Scanner) int {
+	beacons := map[Vector]bool{}
+	for _, s := range scanners {
 		for _, b := range s.Beacons {
-			beaconSet[b] = true
+			beacons[b] = true
 		}
 	}
 
-	return len(beaconSet)
+	return len(beacons)
 }
 
-func solvePartTwo(sensors []Sensor) int {
-  var max float64 = 0
-  for i, a := range sensors {
-    for j, b := range sensors {
-      if i == j {
-        continue
-      }
-      dist := a.Position.ManhattanDistance(b.Position)
-      if dist > max {
-        max = dist
-      }
-    }
-  }
+func solvePartTwo(scanners []Scanner) int {
+	var max float64 = 0
+	for i, a := range scanners {
+		for j, b := range scanners {
+			if i == j {
+				continue
+			}
+			dist := a.Position.ManhattanDistance(b.Position)
+			if dist > max {
+				max = dist
+			}
+		}
+	}
 	return int(max)
 }
 
 func main() {
-	sensors, err := readInput()
+	scanners, err := readInput()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	sensors = solve(sensors)
+	scanners = solve(scanners)
 
 	var result int
-	result = solvePartOne(sensors)
+	result = solvePartOne(scanners)
 	fmt.Printf("Part one: %v\n", result)
 
-	result = solvePartTwo(sensors)
+	result = solvePartTwo(scanners)
 	fmt.Printf("Part two: %v\n", result)
 }
