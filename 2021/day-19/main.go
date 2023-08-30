@@ -133,15 +133,6 @@ func (v *Vector) ApplyMatrix3D(m *mat.Dense) *Vector {
 	x32 := m.At(1, 2)
 	x33 := m.At(2, 2)
 
-	// x41 := m.At(0, 3)
-	// x42 := m.At(1, 3)
-	// x43 := m.At(2, 3)
-
-	// return &Vector{
-	// 	x11*v.X + x21*v.Y + x31*v.Z + x41,
-	// 	x12*v.X + x22*v.Y + x32*v.Z + x42,
-	// 	x13*v.X + x23*v.Y + x33*v.Z + x43,
-	// }
 	return &Vector{
 		x11*v.X + x21*v.Y + x31*v.Z,
 		x12*v.X + x22*v.Y + x32*v.Z,
@@ -329,7 +320,7 @@ func GetSensorVariants() []*mat.Dense {
 	return variants
 }
 
-func solvePartOne(sensors []Sensor) int {
+func solve(sensors []Sensor) []Sensor {
 	// Algorhitm
 	// Each scanner have a transfromation matrix 4x4
 	// Scanner 0 have identity 4x4 matrix
@@ -372,8 +363,12 @@ func solvePartOne(sensors []Sensor) int {
 		}
 	}
 
+	return oriented
+}
+
+func solvePartOne(sensors []Sensor) int {
 	beaconSet := map[Vector]bool{}
-	for _, s := range oriented {
+	for _, s := range sensors {
 		for _, b := range s.Beacons {
 			beaconSet[b] = true
 		}
@@ -391,6 +386,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	sensors = solve(sensors)
 
 	var result int
 	result = solvePartOne(sensors)
