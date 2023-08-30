@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -120,6 +121,14 @@ func (v *Vector) Sub(val *Vector) *Vector {
 	}
 }
 
+func (v *Vector) Abs() *Vector {
+	return &Vector{
+    math.Abs(v.X),
+    math.Abs(v.Y),
+    math.Abs(v.Z),
+	}
+}
+
 func (v *Vector) ApplyMatrix3D(m *mat.Dense) *Vector {
 	x11 := m.At(0, 0)
 	x12 := m.At(1, 0)
@@ -138,6 +147,11 @@ func (v *Vector) ApplyMatrix3D(m *mat.Dense) *Vector {
 		x12*v.X + x22*v.Y + x32*v.Z,
 		x13*v.X + x23*v.Y + x33*v.Z,
 	}
+}
+
+func (v *Vector) ManhattanDistance(val *Vector) float64 {
+  s := v.Sub(val).Abs()
+  return s.X + s.Y + s.Z
 }
 
 func NewVector3(val []float64) *Vector {
@@ -378,7 +392,19 @@ func solvePartOne(sensors []Sensor) int {
 }
 
 func solvePartTwo(sensors []Sensor) int {
-	return 0
+  var max float64 = 0
+  for i, a := range sensors {
+    for j, b := range sensors {
+      if i == j {
+        continue
+      }
+      dist := a.Position.ManhattanDistance(b.Position)
+      if dist > max {
+        max = dist
+      }
+    }
+  }
+	return int(max)
 }
 
 func main() {
