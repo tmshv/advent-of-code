@@ -83,39 +83,39 @@ void free_token(Token *token) {
 }
 
 // Tokenization
-Token **tokenize(const char *game_string, size_t *token_count) {
+Token **tokenize(const char *inp, size_t *token_count) {
 	Token **tokens = NULL;
 	*token_count = 0;
 	int i = 0;
 
-	while (game_string[i]) {
-		if (isdigit(game_string[i])) {
+	while (inp[i]) {
+		if (isdigit(inp[i])) {
 			char num[16] = {0};
 			int index = 0;
-			while (isdigit(game_string[i])) {
-				num[index++] = game_string[i++];
+			while (isdigit(inp[i])) {
+				num[index++] = inp[i++];
 			}
 			tokens = (Token **)realloc(tokens, sizeof(Token *) * (*token_count + 1));
 			tokens[*token_count] = make_token("NUMBER", num);
 			(*token_count)++;
-		} else if (isalpha(game_string[i])) {
+		} else if (isalpha(inp[i])) {
 			char word[16] = {0};
 			int index = 0;
-			while (isalpha(game_string[i])) {
-				word[index++] = game_string[i++];
+			while (isalpha(inp[i])) {
+				word[index++] = inp[i++];
 			}
 			tokens = (Token **)realloc(tokens, sizeof(Token *) * (*token_count + 1));
 			tokens[*token_count] = make_token("WORD", word);
 			(*token_count)++;
-		} else if (strchr(";,:", game_string[i])) {
-			char delim[2] = {game_string[i++], '\0'};
+		} else if (strchr(";,:", inp[i])) {
+			char delim[2] = {inp[i++], '\0'};
 			tokens = (Token **)realloc(tokens, sizeof(Token *) * (*token_count + 1));
 			tokens[*token_count] = make_token("WORD", delim);
 			(*token_count)++;
-		} else if (isspace(game_string[i])) {
+		} else if (isspace(inp[i])) {
 			i++; // Ignore whitespace
 		} else {
-			fprintf(stderr, "Unknown character: %c\n", game_string[i]);
+			fprintf(stderr, "Unknown character: %c\n", inp[i]);
 			exit(1);
 		}
 	}
