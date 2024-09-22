@@ -4,21 +4,26 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"regexp"
 	"strconv"
-
-	"github.com/tmshv/advent-of-code/2021/day-22/boxtree"
 )
 
-type instruction struct {
-	min boxtree.Vector
-	max boxtree.Vector
-	on  bool
+type vector struct {
+	x float64
+	y float64
+	z float64
 }
 
-func readInput() ([]instruction, error) {
-	instructions := []instruction{}
+type cube struct {
+	min vector
+	max vector
+	val int
+}
+
+func readInput() ([]cube, error) {
+	instructions := []cube{}
 	scanner := bufio.NewScanner(os.Stdin)
 
 	for scanner.Scan() {
@@ -37,10 +42,14 @@ func readInput() ([]instruction, error) {
 		zStart, _ := strconv.Atoi(submatches[6])
 		zEnd, _ := strconv.Atoi(submatches[7])
 
-		i := instruction{
-			min: *boxtree.NewFromInt(xStart, yStart, zStart),
-			max: *boxtree.NewFromInt(xEnd, yEnd, zEnd),
-			on:  on,
+		val := 1
+		if !on {
+			val = -1
+		}
+		i := cube{
+			min: *NewFromInt(xStart, yStart, zStart),
+			max: *NewFromInt(xEnd, yEnd, zEnd),
+			val: val,
 		}
 		instructions = append(instructions, i)
 	}
@@ -52,143 +61,94 @@ func readInput() ([]instruction, error) {
 	return instructions, nil
 }
 
-type pair [2]int
+func (c1 *cube) intersect(c2 *cube) (*cube, bool) {
+	if c1.max.x < c2.min.x || c1.min.x > c2.max.x || c1.max.y < c2.min.y || c1.min.y > c2.max.y || c1.max.z < c2.min.z || c1.min.z > c2.max.z {
+		return nil, false
+	}
 
-func pairs(n int) <-chan pair {
-	ch := make(chan pair)
-	go func() {
-		defer close(ch)
-		for i := 0; i < n; i++ {
-			for j := i + 1; j < n; j++ {
-				p := pair{i, j}
-				ch <- p
-			}
-		}
-	}()
-	return ch
+	return &cube{
+		val: c2.val,
+		min: vector{
+			x: math.Max(c1.min.x, c2.min.x),
+			y: math.Max(c1.min.y, c2.min.y),
+			z: math.Max(c1.min.z, c2.min.z),
+		},
+		max: vector{
+			x: math.Min(c1.max.x, c2.max.x),
+			y: math.Min(c1.max.y, c2.max.y),
+			z: math.Min(c1.max.z, c2.max.z),
+		},
+	}, true
 }
 
-func union(boxes []*boxtree.Box3) []*boxtree.Box3 {
-	// Nothing to union
-	if len(boxes) < 2 {
-		return boxes[:]
-	}
-
-	result := boxes[:1]
-	q := boxes[1:]
-	for len(q) > 0 {
-		box := q[0]
-		q = q[1:]
-
-		intesect := -1
-		for i, b := range result {
-			if box.IntersectsBox(b) {
-				intesect = i
-				break
-			}
-		}
-		if intesect >= 0 {
-			parts := box.Subtract(result[intesect])
-			result = append(result, parts...)
+func intersections(c *cube, cubes []*cube) []*cube {
+	var ics []*cube
+	for _, cub := range cubes {
+		if i, ok := c.intersect(cub); ok {
+			ics = append(ics, i)
 		}
 	}
-
-	return result
+	return ics
 }
 
-func add(box *boxtree.Box3, boxes []*boxtree.Box3) []*boxtree.Box3 {
-	var result []*boxtree.Box3
-
-	var inter bool
-	for _, b := range boxes {
-		if b.IntersectsBox(box) {
-			parts := box.Subtract(b)
-			result = append(result, parts...)
-			inter = true
-		}
-	}
-	if !inter {
-		result = append(result, box)
-	}
-
-	return result
+func volume(cube *cube) int {
+	w := cube.max.x - cube.min.x + 1
+	h := cube.max.y - cube.min.y + 1
+	d := cube.max.z - cube.min.z + 1
+	return cube.val * int(w*h*d)
 }
 
-func sub(box *boxtree.Box3, boxes []*boxtree.Box3) []*boxtree.Box3 {
-	var result []*boxtree.Box3
+func solve(cubes []*cube) int {
+	var next []*cube
+	for _, cub := range cubes {
+		ins := intersections(cub, next)
+		for _, i := range ins {
+			i.val *= -1
+		}
+		next = append(next, ins...)
 
-	for _, b := range boxes {
-		if b.IntersectsBox(box) {
-			parts := b.Subtract(box)
-			result = append(result, parts...)
-		} else {
-			result = append(result, b)
+		if cub.val == 1 {
+			next = append(next, cub)
 		}
 	}
 
-	return result
-}
-
-func volume(b *boxtree.Box3) float64 {
-	return float64((b.Max.X - b.Min.X) * (b.Max.Y - b.Min.Y) * (b.Max.Z - b.Min.Z))
-}
-
-func volumes(bs []*boxtree.Box3) float64 {
-	var vol float64
-	for _, b := range bs {
-		vol += volume(b)
-	}
-	return vol
-}
-
-func solvePartOne(ix []instruction) int {
-	bounds := boxtree.Box3{
-		Min: boxtree.Vector{-50, -50, -50},
-		Max: boxtree.Vector{50, 50, 50},
-	}
-
-	boxes := []*boxtree.Box3{}
-	exp := boxtree.Vector{X: 1, Y: 1, Z: 1}
-	for _, i := range ix {
-		box := boxtree.NewFromMinMax(i.min, i.max)
-		if !box.IntersectsBox(&bounds) {
-			fmt.Println("ignore", box)
-			continue
-		}
-
-		box.Max.Add(&exp)
-
-		if i.on {
-			parts := add(box, boxes)
-			boxes = append(boxes, parts...)
-			fmt.Println(len(boxes))
-			// fmt.Println("on box", *box, "parts", len(parts), "+", volumes(parts))
-			// for _, b := range parts {
-			// 	fmt.Println("...part", *b, volume(b))
-			// }
-		} else {
-			boxes = sub(box, boxes)
-			// boxes = append(boxes, parts...)
-			// fmt.Println("of box", *box, "-", volumes(boxes))
-			// for _, b := range parts {
-			// 	fmt.Println("...-part", *b, volume(b))
-			// }
-		}
-	}
-
-	count := 0
-	for _, box := range boxes {
-		// cube := *box
-		// cube.Expand(0.5)
-		// cube.Max.Add(&exp)
-		// fmt.Println("vol", *box, volume(box))
-		count += int(volume(box))
+	var count int
+	for _, c := range next {
+		count += volume(c)
 	}
 	return count
 }
 
-func solvePartTwo(ix []instruction) int {
-	return 0
+func solvePartOne(ix []cube) int {
+	bounds := Box3{
+		Min: vector{-50, -50, -50},
+		Max: vector{50, 50, 50},
+	}
+
+	var cubes []*cube
+
+	for _, i := range ix {
+		box := NewFromMinMax(i.min, i.max)
+		if !box.IntersectsBox(&bounds) {
+			continue
+		}
+
+		cube := i
+		cubes = append(cubes, &cube)
+	}
+
+	return solve(cubes)
+}
+
+func solvePartTwo(ix []cube) int {
+	var cubes []*cube
+
+	for _, i := range ix {
+		cube := i
+		cubes = append(cubes, &cube)
+	}
+
+	return solve(cubes)
 }
 
 func main() {
@@ -198,7 +158,7 @@ func main() {
 	}
 
 	var result int
-	result = solvePartOne(instructions)
+	result = solvePartOne(instructions[:])
 	fmt.Printf("Part one: %v\n", result)
 
 	result = solvePartTwo(instructions)

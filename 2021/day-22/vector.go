@@ -12,67 +12,61 @@ func clamp(value, min, max float64) float64 {
 	return value
 }
 
-type Vector struct {
-	X float64
-	Y float64
-	Z float64
+func (p *vector) Equal(v *vector) bool {
+	return p.x == v.x && p.y == v.y && p.z == v.z
 }
 
-func (p *Vector) Equal(v *Vector) bool {
-	return p.X == v.X && p.Y == v.Y && p.Z == v.Z
-}
-
-func (p *Vector) Clone() *Vector {
-	return &Vector{
-		X: p.X,
-		Y: p.Y,
-		Z: p.Z,
+func (p *vector) Clone() *vector {
+	return &vector{
+		x: p.x,
+		y: p.y,
+		z: p.z,
 	}
 }
 
-func (p *Vector) Min(v *Vector) {
-	p.X = math.Min(p.X, v.X)
-	p.Y = math.Min(p.Y, v.Y)
-	p.Z = math.Min(p.Z, v.Z)
+func (p *vector) Min(v *vector) {
+	p.x = math.Min(p.x, v.x)
+	p.y = math.Min(p.y, v.y)
+	p.z = math.Min(p.z, v.z)
 }
 
-func (p *Vector) Max(v *Vector) {
-	p.X = math.Max(p.X, v.X)
-	p.Y = math.Max(p.Y, v.Y)
-	p.Z = math.Max(p.Z, v.Z)
+func (p *vector) Max(v *vector) {
+	p.x = math.Max(p.x, v.x)
+	p.y = math.Max(p.y, v.y)
+	p.z = math.Max(p.z, v.z)
 }
 
-func (p *Vector) Mult(val float64) {
-	p.X *= val
-	p.Y *= val
-	p.Z *= val
+func (p *vector) Mult(val float64) {
+	p.x *= val
+	p.y *= val
+	p.z *= val
 }
 
-func (p *Vector) Add(other *Vector) {
-	p.X += other.X
-	p.Y += other.Y
-	p.Z += other.Z
+func (p *vector) Add(other *vector) {
+	p.x += other.x
+	p.y += other.y
+	p.z += other.z
 }
 
-func (p *Vector) Sub(other *Vector) {
-	p.X -= other.X
-	p.Y -= other.Y
-	p.Z -= other.Z
+func (p *vector) Sub(other *vector) {
+	p.x -= other.x
+	p.y -= other.y
+	p.z -= other.z
 }
 
-func (p *Vector) Clamp(min, max *Vector) {
-	p.X = clamp(p.X, min.X, max.X)
-	p.Y = clamp(p.Y, min.Y, max.Y)
-	p.Z = clamp(p.Z, min.Z, max.Z)
+func (p *vector) Clamp(min, max *vector) {
+	p.x = clamp(p.x, min.x, max.x)
+	p.y = clamp(p.y, min.y, max.y)
+	p.z = clamp(p.z, min.z, max.z)
 }
 
-func (p *Vector) Adjacents(ok func(p *Vector) bool) <-chan Vector {
-	ch := make(chan Vector)
+func (p *vector) Adjacents(ok func(p *vector) bool) <-chan vector {
+	ch := make(chan vector)
 
 	go func() {
 		defer close(ch)
 
-		dirs := []Vector{
+		dirs := []vector{
 			{0, -1, 0},
 			{0, 1, 0},
 			{-1, 0, 0},
@@ -90,6 +84,6 @@ func (p *Vector) Adjacents(ok func(p *Vector) bool) <-chan Vector {
 	return ch
 }
 
-func NewFromInt(x, y, z int) *Vector {
-	return &Vector{float64(x), float64(y), float64(z)}
+func NewFromInt(x, y, z int) *vector {
+	return &vector{float64(x), float64(y), float64(z)}
 }

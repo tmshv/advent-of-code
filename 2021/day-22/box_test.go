@@ -14,13 +14,13 @@ func TestBoxSplitX(t *testing.T) {
 			val:  0,
 			expect: []Box3{
 				{
-					Min: Vector{0, 0, 0},
-					Max: Vector{2, 2, 2},
+					Min: vector{0, 0, 0},
+					Max: vector{2, 2, 2},
 				},
 			},
 			box: Box3{
-				Min: Vector{0, 0, 0},
-				Max: Vector{2, 2, 2},
+				Min: vector{0, 0, 0},
+				Max: vector{2, 2, 2},
 			},
 		},
 		{
@@ -28,13 +28,13 @@ func TestBoxSplitX(t *testing.T) {
 			val:  5,
 			expect: []Box3{
 				{
-					Min: Vector{0, 0, 0},
-					Max: Vector{2, 2, 2},
+					Min: vector{0, 0, 0},
+					Max: vector{2, 2, 2},
 				},
 			},
 			box: Box3{
-				Min: Vector{0, 0, 0},
-				Max: Vector{2, 2, 2},
+				Min: vector{0, 0, 0},
+				Max: vector{2, 2, 2},
 			},
 		},
 		{
@@ -42,17 +42,17 @@ func TestBoxSplitX(t *testing.T) {
 			val:  1,
 			expect: []Box3{
 				{
-					Min: Vector{0, 0, 0},
-					Max: Vector{1, 0, 0},
+					Min: vector{0, 0, 0},
+					Max: vector{1, 0, 0},
 				},
 				{
-					Max: Vector{1, 0, 0},
-					Min: Vector{2, 2, 2},
+					Max: vector{1, 0, 0},
+					Min: vector{2, 2, 2},
 				},
 			},
 			box: Box3{
-				Min: Vector{0, 0, 0},
-				Max: Vector{2, 2, 2},
+				Min: vector{0, 0, 0},
+				Max: vector{2, 2, 2},
 			},
 		},
 	}
@@ -82,48 +82,48 @@ func TestBoxSplit(t *testing.T) {
 			test:   "one fully inside another",
 			expect: 27,
 			a: Box3{
-				Min: Vector{0, 0, 0},
-				Max: Vector{9, 9, 9},
+				Min: vector{0, 0, 0},
+				Max: vector{9, 9, 9},
 			},
 			b: Box3{
-				Min: Vector{1, 1, 1},
-				Max: Vector{8, 8, 8},
+				Min: vector{1, 1, 1},
+				Max: vector{8, 8, 8},
 			},
 		},
 		{
 			test:   "one fully cover another",
 			expect: 1,
 			a: Box3{
-				Min: Vector{1, 1, 1},
-				Max: Vector{8, 8, 8},
+				Min: vector{1, 1, 1},
+				Max: vector{8, 8, 8},
 			},
 			b: Box3{
-				Min: Vector{0, 0, 0},
-				Max: Vector{9, 9, 9},
+				Min: vector{0, 0, 0},
+				Max: vector{9, 9, 9},
 			},
 		},
 		{
 			test:   "one cover half of another by each axis",
 			expect: 8,
 			a: Box3{
-				Min: Vector{0, 0, 0},
-				Max: Vector{4, 4, 4},
+				Min: vector{0, 0, 0},
+				Max: vector{4, 4, 4},
 			},
 			b: Box3{
-				Min: Vector{2, 2, 2},
-				Max: Vector{6, 6, 6},
+				Min: vector{2, 2, 2},
+				Max: vector{6, 6, 6},
 			},
 		},
 		{
 			test:   "one inside another but one side are overlapping",
 			expect: 27 - 9, // 27 are parts of main box minus 9 boxes should gone
 			a: Box3{
-				Min: Vector{0, 0, 0},
-				Max: Vector{4, 4, 4},
+				Min: vector{0, 0, 0},
+				Max: vector{4, 4, 4},
 			},
 			b: Box3{
-				Min: Vector{0, 1, 1},
-				Max: Vector{3, 3, 3},
+				Min: vector{0, 1, 1},
+				Max: vector{3, 3, 3},
 			},
 		},
 	}
@@ -152,60 +152,60 @@ func TestBoxJoin(t *testing.T) {
 		{
 			test: "one fully inside another",
 			a: Box3{
-				Min: Vector{0, 0, 0},
-				Max: Vector{9, 9, 9},
+				Min: vector{0, 0, 0},
+				Max: vector{9, 9, 9},
 			},
 			b: Box3{
-				Min: Vector{1, 1, 1},
-				Max: Vector{8, 8, 8},
+				Min: vector{1, 1, 1},
+				Max: vector{8, 8, 8},
 			},
 			expect: 1,
 		},
 		{
 			test: "one intersecting another by one axis",
 			a: Box3{
-				Min: Vector{0, 0, 0},
-				Max: Vector{8, 8, 8},
+				Min: vector{0, 0, 0},
+				Max: vector{8, 8, 8},
 			},
 			b: Box3{
-				Min: Vector{1, 1, 1},
-				Max: Vector{9, 7, 7},
+				Min: vector{1, 1, 1},
+				Max: vector{9, 7, 7},
 			},
 			expect: 2,
 		},
 		{
 			test: "one intersecting another by two axes",
 			a: Box3{
-				Min: Vector{0, 0, 0},
-				Max: Vector{8, 8, 8},
+				Min: vector{0, 0, 0},
+				Max: vector{8, 8, 8},
 			},
 			b: Box3{
-				Min: Vector{1, 1, 1},
-				Max: Vector{9, 9, 7},
+				Min: vector{1, 1, 1},
+				Max: vector{9, 9, 7},
 			},
 			expect: 4,
 		},
 		{
 			test: "one intersecting another by thre axes",
 			a: Box3{
-				Min: Vector{0, 0, 0},
-				Max: Vector{8, 8, 8},
+				Min: vector{0, 0, 0},
+				Max: vector{8, 8, 8},
 			},
 			b: Box3{
-				Min: Vector{1, 1, 1},
-				Max: Vector{9, 9, 9},
+				Min: vector{1, 1, 1},
+				Max: vector{9, 9, 9},
 			},
 			expect: 8,
 		},
 		{
 			test: "two boxes are not overlapping",
 			a: Box3{
-				Min: Vector{0, 0, 0},
-				Max: Vector{1, 1, 1},
+				Min: vector{0, 0, 0},
+				Max: vector{1, 1, 1},
 			},
 			b: Box3{
-				Min: Vector{2, 2, 2},
-				Max: Vector{3, 3, 3},
+				Min: vector{2, 2, 2},
+				Max: vector{3, 3, 3},
 			},
 			expect: 2,
 		},
@@ -244,14 +244,26 @@ func TestBoxSubtract(t *testing.T) {
 		{
 			test: "test0",
 			a: Box3{
-				Min: Vector{11, 11, 11},
-				Max: Vector{13, 13, 13},
+				Min: vector{11, 11, 11},
+				Max: vector{13, 13, 13},
 			},
 			b: Box3{
-				Min: Vector{10, 10, 10},
-				Max: Vector{12, 12, 12},
+				Min: vector{10, 10, 10},
+				Max: vector{12, 12, 12},
 			},
 			expect: 7,
+		},
+		{
+			test: "subtract box totally cover",
+			b: Box3{
+				Min: vector{10, 10, 10},
+				Max: vector{12, 12, 12},
+			},
+			a: Box3{
+				Min: vector{11, 11, 11},
+				Max: vector{13, 13, 13},
+			},
+			expect: 0,
 		},
 	}
 

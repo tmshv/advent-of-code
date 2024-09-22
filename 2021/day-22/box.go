@@ -5,14 +5,14 @@ import (
 )
 
 type Box3 struct {
-	Min Vector
-	Max Vector
+	Min vector
+	Max vector
 }
 
 func (this *Box3) IsEmpty() bool {
 	// this is a more robust check for empty than ( volume <= 0 ) because volume can get positive with two negative axes
 
-	return (this.Max.X < this.Min.X) || (this.Max.Y < this.Min.Y) || (this.Max.Z < this.Min.Z)
+	return (this.Max.x < this.Min.x) || (this.Max.y < this.Min.y) || (this.Max.z < this.Min.z)
 }
 
 func (this *Box3) Clone() *Box3 {
@@ -27,18 +27,18 @@ func (this *Box3) Equal(box *Box3) bool {
 }
 
 func (this *Box3) MakeEmpty() {
-	this.Min.X = math.MaxFloat64
-	this.Min.Y = math.MaxFloat64
-	this.Min.Z = math.MaxFloat64
+	this.Min.x = math.MaxFloat64
+	this.Min.y = math.MaxFloat64
+	this.Min.z = math.MaxFloat64
 
-	this.Max.X = -math.MaxFloat64
-	this.Max.Y = -math.MaxFloat64
-	this.Max.Z = -math.MaxFloat64
+	this.Max.x = -math.MaxFloat64
+	this.Max.y = -math.MaxFloat64
+	this.Max.z = -math.MaxFloat64
 }
 
-func (this *Box3) Center() *Vector {
+func (this *Box3) Center() *vector {
 	if this.IsEmpty() {
-		return &Vector{}
+		return &vector{}
 	}
 
 	center := this.Min
@@ -48,9 +48,9 @@ func (this *Box3) Center() *Vector {
 	return &center
 }
 
-func (this *Box3) Size() *Vector {
+func (this *Box3) Size() *vector {
 	if this.IsEmpty() {
-		return &Vector{}
+		return &vector{}
 	}
 	size := this.Max
 	size.Sub(&this.Min)
@@ -58,34 +58,34 @@ func (this *Box3) Size() *Vector {
 }
 
 func (this *Box3) Expand(value float64) {
-	v := Vector{value, value, value}
+	v := vector{value, value, value}
 	this.Min.Sub(&v)
 	this.Max.Add(&v)
 }
 
-func (this *Box3) Contains(point *Vector) bool {
-	return !(point.X < this.Min.X || point.X > this.Max.X ||
-		point.Y < this.Min.Y || point.Y > this.Max.Y ||
-		point.Z < this.Min.Z || point.Z > this.Max.Z)
+func (this *Box3) Contains(point *vector) bool {
+	return !(point.x < this.Min.x || point.x > this.Max.x ||
+		point.y < this.Min.y || point.y > this.Max.y ||
+		point.z < this.Min.z || point.z > this.Max.z)
 }
 
 func (this *Box3) ContainsBox(box *Box3) bool {
-	return this.Min.X <= box.Min.X && box.Max.X <= this.Max.X &&
-		this.Min.Y <= box.Min.Y && box.Max.Y <= this.Max.Y &&
-		this.Min.Z <= box.Min.Z && box.Max.Z <= this.Max.Z
+	return this.Min.x <= box.Min.x && box.Max.x <= this.Max.x &&
+		this.Min.y <= box.Min.y && box.Max.y <= this.Max.y &&
+		this.Min.z <= box.Min.z && box.Max.z <= this.Max.z
 }
 
 func (this *Box3) Within(box *Box3) bool {
-	return this.Min.X > box.Min.X && this.Max.X < box.Max.X &&
-		this.Min.Y > box.Min.Y && this.Max.Y < box.Max.Y &&
-		this.Min.Z > box.Min.Z && this.Max.Z < box.Max.Z
+	return this.Min.x > box.Min.x && this.Max.x < box.Max.x &&
+		this.Min.y > box.Min.y && this.Max.y < box.Max.y &&
+		this.Min.z > box.Min.z && this.Max.z < box.Max.z
 }
 
 func (this *Box3) IntersectsBox(box *Box3) bool {
 	// using 6 splitting planes to rule out intersections.
-	return !(box.Max.X < this.Min.X || box.Min.X > this.Max.X ||
-		box.Max.Y < this.Min.Y || box.Min.Y > this.Max.Y ||
-		box.Max.Z < this.Min.Z || box.Min.Z > this.Max.Z)
+	return !(box.Max.x < this.Min.x || box.Min.x > this.Max.x ||
+		box.Max.y < this.Min.y || box.Min.y > this.Max.y ||
+		box.Max.z < this.Min.z || box.Min.z > this.Max.z)
 }
 
 // clampPoint( point, target ) {
@@ -115,7 +115,7 @@ func (this *Box3) Union(box *Box3) {
 	this.Max.Max(&box.Max)
 }
 
-func (this *Box3) Translate(offset *Vector) {
+func (this *Box3) Translate(offset *vector) {
 	this.Min.Add(offset)
 	this.Max.Add(offset)
 }
@@ -135,7 +135,7 @@ func (this *Box3) Join(box *Box3) []*Box3 {
 func (this *Box3) Subtract(box *Box3) []*Box3 {
 	var result []*Box3
 	for _, part := range this.Split(box) {
-		if !box.ContainsBox(part) {
+		if !box.IntersectsBox(part) {
 			result = append(result, part)
 		}
 	}
@@ -151,7 +151,7 @@ func (this *Box3) Split(box *Box3) []*Box3 {
 
 	// X
 	for _, item := range result {
-		for _, part := range item.SplitX(box.Min.X) {
+		for _, part := range item.SplitX(box.Min.x) {
 			next = append(next, part)
 		}
 	}
@@ -159,7 +159,7 @@ func (this *Box3) Split(box *Box3) []*Box3 {
 	next = nil
 
 	for _, item := range result {
-		for _, part := range item.SplitX(box.Max.X) {
+		for _, part := range item.SplitX(box.Max.x) {
 			next = append(next, part)
 		}
 	}
@@ -168,7 +168,7 @@ func (this *Box3) Split(box *Box3) []*Box3 {
 
 	// Y
 	for _, item := range result {
-		for _, part := range item.SplitY(box.Min.Y) {
+		for _, part := range item.SplitY(box.Min.y) {
 			next = append(next, part)
 		}
 	}
@@ -176,7 +176,7 @@ func (this *Box3) Split(box *Box3) []*Box3 {
 	next = nil
 
 	for _, item := range result {
-		for _, part := range item.SplitY(box.Max.Y) {
+		for _, part := range item.SplitY(box.Max.y) {
 			next = append(next, part)
 		}
 	}
@@ -185,7 +185,7 @@ func (this *Box3) Split(box *Box3) []*Box3 {
 
 	// Z
 	for _, item := range result {
-		for _, b := range item.SplitZ(box.Min.Z) {
+		for _, b := range item.SplitZ(box.Min.z) {
 			next = append(next, b)
 		}
 	}
@@ -193,7 +193,7 @@ func (this *Box3) Split(box *Box3) []*Box3 {
 	next = nil
 
 	for _, item := range result {
-		for _, b := range item.SplitZ(box.Max.Z) {
+		for _, b := range item.SplitZ(box.Max.z) {
 			next = append(next, b)
 		}
 	}
@@ -204,7 +204,7 @@ func (this *Box3) Split(box *Box3) []*Box3 {
 }
 
 func (this *Box3) SplitX(val float64) []*Box3 {
-	if val <= this.Min.X || val >= this.Max.X {
+	if val <= this.Min.x || val >= this.Max.x {
 		return []*Box3{this.Clone()}
 	}
 
@@ -212,18 +212,18 @@ func (this *Box3) SplitX(val float64) []*Box3 {
 	var result []*Box3
 
 	box = this.Clone()
-	box.Max.X = val
+	box.Max.x = val
 	result = append(result, box)
 
 	box = this.Clone()
-	box.Min.X = val
+	box.Min.x = val
 	result = append(result, box)
 
 	return result
 }
 
 func (this *Box3) SplitY(val float64) []*Box3 {
-	if val <= this.Min.Y || val >= this.Max.Y {
+	if val <= this.Min.y || val >= this.Max.y {
 		return []*Box3{this.Clone()}
 	}
 
@@ -231,18 +231,18 @@ func (this *Box3) SplitY(val float64) []*Box3 {
 	var result []*Box3
 
 	box = this.Clone()
-	box.Max.Y = val
+	box.Max.y = val
 	result = append(result, box)
 
 	box = this.Clone()
-	box.Min.Y = val
+	box.Min.y = val
 	result = append(result, box)
 
 	return result
 }
 
 func (this *Box3) SplitZ(val float64) []*Box3 {
-	if val <= this.Min.Z || val >= this.Max.Z {
+	if val <= this.Min.z || val >= this.Max.z {
 		return []*Box3{this.Clone()}
 	}
 
@@ -250,17 +250,17 @@ func (this *Box3) SplitZ(val float64) []*Box3 {
 	var result []*Box3
 
 	box = this.Clone()
-	box.Max.Z = val
+	box.Max.z = val
 	result = append(result, box)
 
 	box = this.Clone()
-	box.Min.Z = val
+	box.Min.z = val
 	result = append(result, box)
 
 	return result
 }
 
-func NewFromCenterAndSize(center Vector, size Vector) *Box3 {
+func NewFromCenterAndSize(center vector, size vector) *Box3 {
 	halfSize := size
 	halfSize.Mult(0.5)
 
@@ -273,6 +273,6 @@ func NewFromCenterAndSize(center Vector, size Vector) *Box3 {
 	return &Box3{min, max}
 }
 
-func NewFromMinMax(min, max Vector) *Box3 {
+func NewFromMinMax(min, max vector) *Box3 {
 	return &Box3{min, max}
 }
