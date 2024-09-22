@@ -1,4 +1,4 @@
-package boxtree
+package main
 
 import "math"
 
